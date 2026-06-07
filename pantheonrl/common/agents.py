@@ -312,6 +312,100 @@ class OffPolicyAgent(Agent):
         self.model.set_logger(configure_logger(
             self.model.verbose, tensorboard_log, tb_log_name))
         self.model.ep_info_buffer = deque([{"r": 0, "l": 0}], maxlen=100)
+        self.total_training_timesteps = None
+
+    def set_total_training_timesteps(self, total_timesteps: int) -> None:
+        """Set the timestep budget used by the model's training schedules."""
+        self.total_training_timesteps = total_timesteps
+        self.model._total_timesteps = total_timesteps
+
+    def _log_episode(self) -> None:
+        """Update episode counters and write logs after a completed episode."""
+        self.num_collected_episodes += 1
+        self.model._episode_num += 1
+        self.episode_rewards.append(self.episode_reward)
+        self.total_timesteps.append(self.episode_timesteps)
+
+        if self.model.action_noise is not None:
+            self.model.action_noise.reset()
+        self.episode_reward = 0.0
+        self.episode_timesteps = 0
+
+        if self.log_interval is None or \
+                self.model._episode_num % self.log_interval != 0:
+            return
+
+        self.model.logger.record(
+            "name", self.name, exclude="tensorboard")
+        self.model.logger.record(
+            "time/episodes", self.model._episode_num, exclude="tensorboard")
+
+        if len(self.model.ep_info_buffer) > 0 and \
+                len(self.model.ep_info_buffer[0]) > 0:
+            last_exclude = self.model.ep_info_buffer.pop()
+            rews = [ep["r"] for ep in self.model.ep_info_buffer]
+            lens = [ep["l"] for ep in self.model.ep_info_buffer]
+            self.model.logger.record(
+                "rollout/ep_rew_mean", safe_mean(rews))
+            self.model.logger.record(
+                "rollout/ep_len_mean", safe_mean(lens))
+            self.model.ep_info_buffer.append(last_exclude)
+
+        self.model.logger.record(
+            "time/total_timesteps", self.model.num_timesteps,
+            exclude="tensorboard")
+        self.model.logger.dump(step=self.model.num_timesteps)
+
+    def _train_if_ready(self) -> None:
+        """Train after the configured amount of completed experience."""
+        if should_collect_more_steps(
+            self.model.train_freq,
+            self.num_collected_steps,
+            self.num_collected_episodes,
+        ):
+            return
+
+        if self.model.num_timesteps > self.model.learning_starts:
+            gradient_steps = self.model.gradient_steps
+            if gradient_steps < 0:
+                gradient_steps = self.num_collected_steps
+            if gradient_steps > 0:
+                self.model.train(
+                    batch_size=self.model.batch_size,
+                    gradient_steps=gradient_steps,
+                )
+
+        self.episode_rewards = []
+        self.total_timesteps = []
+        self.num_collected_steps = 0
+        self.num_collected_episodes = 0
+
+    def _complete_transition(self, next_obs: np.ndarray) -> bool:
+        """Store and process the pending transition using its next observation."""
+        if self.old_buffer_action is None:
+            return False
+
+        self.model._store_transition(
+            self.model.replay_buffer,
+            self.old_buffer_action,
+            next_obs,
+            np.array([self.old_reward]),
+            np.array([self.old_done]),
+            [self.old_info],
+        )
+        self.old_buffer_action = None
+        self.num_collected_steps += 1
+
+        if self.total_training_timesteps is not None:
+            self.model._update_current_progress_remaining(
+                self.model.num_timesteps, self.total_training_timesteps)
+        self.model._on_step()
+
+        if self.old_done:
+            self._log_episode()
+
+        self._train_if_ready()
+        return True
 
     def get_action(self, obs: Observation, record: bool = True) -> np.ndarray:
         """
@@ -326,63 +420,27 @@ class OffPolicyAgent(Agent):
         """
         obs = obs.obs
         if record:
-            if self.old_buffer_action is not None:
-                buf = self.model.replay_buffer
-                buf.observations[buf.pos] = np.array(obs).copy()
-                self.model._store_transition(
-                    buf, self.old_buffer_action, obs, self.old_reward,
-                    self.old_done, [self.old_info])
-
-            if self.old_done:
-                self.num_collected_episodes += 1
-                self.model._episode_num += 1
-                self.episode_rewards.append(self.episode_reward)
-                self.total_timesteps.append(self.episode_timesteps)
-
-                if self.model.action_noise is not None:
-                    self.model.action_noise.reset()
-                self.episode_reward = 0.0
-                self.episode_timesteps = 0
-
-                if self.log_interval is not None and \
-                        self.model._episode_num % self.log_interval == 0:
-                    self.model.logger.record(
-                        "name", self.name, exclude="tensorboard")
-                    self.model.logger.record(
-                        "time/episodes", self.model._episode_num,
-                        exclude="tensorboard")
-
-                    if len(self.model.ep_info_buffer) > 0 and \
-                            len(self.model.ep_info_buffer[0]) > 0:
-                        last_exclude = self.model.ep_info_buffer.pop()
-                        rews = [ep["r"] for ep in self.model.ep_info_buffer]
-                        lens = [ep["l"] for ep in self.model.ep_info_buffer]
-                        self.model.logger.record(
-                            "rollout/ep_rew_mean", safe_mean(rews))
-                        self.model.logger.record(
-                            "rollout/ep_len_mean", safe_mean(lens))
-                        self.model.ep_info_buffer.append(last_exclude)
-
-                    self.model.logger.record(
-                        "time/total_timesteps", self.model.num_timesteps,
-                        exclude="tensorboard")
-                    self.model.logger.dump(step=self.model.num_timesteps)
+            next_obs = obs.reshape(
+                (-1,) + self.model.policy.observation_space.shape)
+            self._complete_transition(next_obs)
 
         resample_noise(self.model, self.n_steps)
 
         obs = obs.reshape((-1,) + self.model.policy.observation_space.shape)
         self.model._last_obs = obs
+        self.model.policy.set_training_mode(False)
 
         action, buffer_action = self.model._sample_action(
             self.model.learning_starts, self.model.action_noise)
 
-        self.model.num_timesteps += 1
-        self.episode_timesteps += 1
-        self.num_collected_steps += 1
-        self.n_steps += 1
-
-        self.old_buffer_action = buffer_action
-        self.old_reward = 0
+        if record:
+            self.model.num_timesteps += 1
+            self.episode_timesteps += 1
+            self.n_steps += 1
+            self.old_buffer_action = buffer_action
+            self.old_reward = 0
+            self.old_done = False
+            self.old_info = {}
 
         return clip_actions(action, self.model)[0]
 
@@ -409,22 +467,16 @@ class OffPolicyAgent(Agent):
         if done:
             self.model.ep_info_buffer.append({"r": 0, "l": 0})
 
-        if should_collect_more_steps(self.model.train_freq,
-                                     self.num_collected_steps,
-                                     self.num_collected_episodes):
-            return
+    def finish_training(self, last_obs: Observation) -> bool:
+        """
+        Store and process the final transition after outer training ends.
 
-        gradient_steps = self.model.gradient_steps
-        if gradient_steps <= 0:
-            gradient_steps = self.num_collected_steps
-
-        self.model.train(batch_size=self.model.batch_size,
-                         gradient_steps=gradient_steps)
-
-        self.episode_rewards = []
-        self.total_timesteps = []
-        self.num_collected_steps = 0
-        self.num_collected_episodes = 0
+        :param last_obs: Partner observation following the final transition
+        :returns: Whether a pending transition was stored
+        """
+        obs = last_obs.obs.reshape(
+            (-1,) + self.model.policy.observation_space.shape)
+        return self._complete_transition(obs)
 
     def learn(self, **kwargs) -> None:
         self.model._custom_logger = False
