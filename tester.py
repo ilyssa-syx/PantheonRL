@@ -7,8 +7,8 @@ import numpy as np
 from trainer import (generate_env, gen_fixed, gen_default, EnvException,
                      ENV_LIST, ADAP_TYPES, LAYOUT_LIST)
 
-EGO_LIST = ['PPO', 'ModularAlgorithm', 'BC'] + ADAP_TYPES
-PARTNER_LIST = ['PPO', 'DEFAULT', 'BC'] + ADAP_TYPES
+EGO_LIST = ['PPO', 'DQN', 'ModularAlgorithm', 'BC'] + ADAP_TYPES
+PARTNER_LIST = ['PPO', 'DQN', 'DEFAULT', 'BC'] + ADAP_TYPES
 
 
 def input_check(args):
@@ -94,8 +94,8 @@ if __name__ == '__main__':
             From the perspective of the ego agent, the environment functions
             like a regular gym environment.
 
-            Supported ego-agent algorithms include PPO, ModularAlgorithm, ADAP,
-            and ADAP_MULT. The default parameters of these algorithms can
+            Supported ego-agent algorithms include PPO, DQN, ModularAlgorithm,
+            ADAP, and ADAP_MULT. The default parameters of these algorithms can
             be overriden using --ego-config.
 
             Alt-Agent:
@@ -104,7 +104,7 @@ if __name__ == '__main__':
             environment. If multiple are listed, the environment randomly
             samples one of them to be the partner at the start of each episode.
 
-            Supported alt-agent algorithms include PPO, ADAP, ADAP_MULT,
+            Supported alt-agent algorithms include PPO, DQN, ADAP, ADAP_MULT,
             and DEFAULT. DEFAULT refers to the default hand-made policy
             in the environment (if it exists).
 

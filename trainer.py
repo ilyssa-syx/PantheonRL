@@ -4,12 +4,13 @@ import gym
 
 import torch as th
 
-from stable_baselines3 import PPO
+from stable_baselines3 import DQN, PPO
 from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.monitor import Monitor
 
 from pantheonrl.common.wrappers import frame_wrap, recorder_wrap
-from pantheonrl.common.agents import OnPolicyAgent, StaticPolicyAgent
+from pantheonrl.common.agents import (OnPolicyAgent, StaticModelAgent,
+                                     StaticPolicyAgent)
 
 from pantheonrl.algos.adap.adap_learn import ADAP
 from pantheonrl.algos.adap.policies import AdapPolicyMult, AdapPolicy
@@ -147,6 +148,8 @@ def gen_load(config, policy_type, location):
         agent.policy.set_context(latent_val)
     elif policy_type == 'PPO':
         agent = PPO.load(location)
+    elif policy_type == 'DQN':
+        agent = DQN.load(location)
     elif policy_type == 'ModularAlgorithm':
         agent = ModularAlgorithm.load(location)
     elif policy_type == 'BC':
@@ -159,6 +162,8 @@ def gen_load(config, policy_type, location):
 
 def gen_fixed(config, policy_type, location):
     agent = gen_load(config, policy_type, location)
+    if policy_type == 'DQN':
+        return StaticModelAgent(agent)
     return StaticPolicyAgent(agent.policy)
 
 

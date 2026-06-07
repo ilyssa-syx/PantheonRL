@@ -16,6 +16,7 @@ from stable_baselines3.common.utils import (
     should_collect_more_steps
 )
 from stable_baselines3.common.policies import ActorCriticPolicy
+from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
 from stable_baselines3.common.off_policy_algorithm import OffPolicyAlgorithm
 from stable_baselines3.common.utils import safe_mean
@@ -71,6 +72,37 @@ class StaticPolicyAgent(Agent):
         """
         actions, _, _ = action_from_policy(obs.obs, self.policy)
         return clip_actions(actions, self.policy)[0]
+
+    def update(self, reward: float, done: bool) -> None:
+        """
+        Update does nothing since the agent does not learn.
+        """
+        pass
+
+
+class StaticModelAgent(Agent):
+    """
+    Agent representing a static (not learning) Stable-Baselines3 model.
+
+    Unlike StaticPolicyAgent, this wrapper uses the public model.predict()
+    interface and therefore supports models whose policies are not actor-critic
+    policies, such as DQN.
+
+    :param model: Stable-Baselines3 model used to predict actions
+    :param deterministic: Whether to use deterministic actions
+    """
+
+    def __init__(self, model: BaseAlgorithm, deterministic: bool = True):
+        self.model = model
+        self.deterministic = deterministic
+
+    def get_action(self, obs: Observation, record: bool = True) -> np.ndarray:
+        """
+        Return an action without recording transitions or updating the model.
+        """
+        action, _ = self.model.predict(
+            obs.obs, deterministic=self.deterministic)
+        return action
 
     def update(self, reward: float, done: bool) -> None:
         """
