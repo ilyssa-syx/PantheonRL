@@ -158,7 +158,7 @@ class OnPolicyAgent(Agent):
         if record and self.n_steps >= self.model.n_steps:
             buf.compute_returns_and_advantage(
                 last_values=self.values,
-                dones=self._last_episode_starts[0]
+                dones=np.array(self._last_episode_starts)
             )
 
             if self.log_interval is not None and \
