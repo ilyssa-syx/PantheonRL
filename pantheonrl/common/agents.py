@@ -7,7 +7,12 @@ import time
 import numpy as np
 import torch as th
 
-from .util import action_from_policy, clip_actions, resample_noise
+from .util import (
+    action_from_policy,
+    clip_actions,
+    resample_noise,
+    value_from_policy,
+)
 from .trajsaver import TransitionsMinimal
 from .observation import Observation
 
@@ -139,6 +144,54 @@ class OnPolicyAgent(Agent):
         self.log_interval = log_interval or (1 if model.verbose else None)
         self.iteration = 0
         self.model.ep_info_buffer = deque([{"r": 0, "l": 0}], maxlen=100)
+        self.total_training_timesteps = None
+
+    def set_total_training_timesteps(self, total_timesteps: int) -> None:
+        """Set the timestep budget used by the model's training schedules."""
+        self.total_training_timesteps = total_timesteps
+        self.model._total_timesteps = total_timesteps
+
+    def _train_rollout(self, last_values: th.Tensor) -> None:
+        """Train the model on a full rollout buffer."""
+        buf = self.model.rollout_buffer
+        if not buf.full:
+            raise RuntimeError("Cannot train an incomplete rollout buffer")
+
+        buf.compute_returns_and_advantage(
+            last_values=last_values,
+            dones=np.array(self._last_episode_starts)
+        )
+
+        if self.log_interval is not None and \
+                self.iteration % self.log_interval == 0:
+            self.model.logger.record(
+                "name", self.name, exclude="tensorboard")
+            self.model.logger.record(
+                "time/iterations", self.iteration, exclude="tensorboard")
+
+            if len(self.model.ep_info_buffer) > 0 and \
+                    len(self.model.ep_info_buffer[0]) > 0:
+                last_exclude = self.model.ep_info_buffer.pop()
+                rews = [ep["r"] for ep in self.model.ep_info_buffer]
+                lens = [ep["l"] for ep in self.model.ep_info_buffer]
+                self.model.logger.record(
+                    "rollout/ep_rew_mean", safe_mean(rews))
+                self.model.logger.record(
+                    "rollout/ep_len_mean", safe_mean(lens))
+                self.model.ep_info_buffer.append(last_exclude)
+
+            self.model.logger.record(
+                "time/total_timesteps", self.model.num_timesteps,
+                exclude="tensorboard")
+            self.model.logger.dump(step=self.model.num_timesteps)
+
+        if self.total_training_timesteps is not None:
+            self.model._update_current_progress_remaining(
+                self.model.num_timesteps, self.total_training_timesteps)
+        self.model.train()
+        self.iteration += 1
+        buf.reset()
+        self.n_steps = 0
 
     def get_action(self, obs: Observation, record: bool = True) -> np.ndarray:
         """
@@ -154,43 +207,12 @@ class OnPolicyAgent(Agent):
         obs = obs.obs
         buf = self.model.rollout_buffer
 
-        # train the model if the buffer is full
-        if record and self.n_steps >= self.model.n_steps:
-            buf.compute_returns_and_advantage(
-                last_values=self.values,
-                dones=np.array(self._last_episode_starts)
-            )
-
-            if self.log_interval is not None and \
-                    self.iteration % self.log_interval == 0:
-                self.model.logger.record(
-                    "name", self.name, exclude="tensorboard")
-                self.model.logger.record(
-                    "time/iterations", self.iteration, exclude="tensorboard")
-
-                if len(self.model.ep_info_buffer) > 0 and \
-                        len(self.model.ep_info_buffer[0]) > 0:
-                    last_exclude = self.model.ep_info_buffer.pop()
-                    rews = [ep["r"] for ep in self.model.ep_info_buffer]
-                    lens = [ep["l"] for ep in self.model.ep_info_buffer]
-                    self.model.logger.record(
-                        "rollout/ep_rew_mean", safe_mean(rews))
-                    self.model.logger.record(
-                        "rollout/ep_len_mean", safe_mean(lens))
-                    self.model.ep_info_buffer.append(last_exclude)
-
-                self.model.logger.record(
-                    "time/total_timesteps", self.num_timesteps,
-                    exclude="tensorboard")
-                self.model.logger.dump(step=self.num_timesteps)
-
-            self.model.train()
-            self.iteration += 1
-            buf.reset()
-            self.n_steps = 0
+        # The current observation follows the last transition in a full buffer,
+        # so its value is the correct bootstrap value for that rollout.
+        if record and buf.full:
+            self._train_rollout(value_from_policy(obs, self.model.policy))
 
         resample_noise(self.model, self.n_steps)
-
         actions, values, log_probs = action_from_policy(obs, self.model.policy)
 
         # modify the rollout buffer with newest info
@@ -211,7 +233,9 @@ class OnPolicyAgent(Agent):
             )
 
         self.n_steps += 1
-        self.num_timesteps += 1
+        if record:
+            self.model.num_timesteps += 1
+            self.num_timesteps = self.model.num_timesteps
         self.values = values
         return clip_actions(actions, self.model)[0]
 
@@ -233,6 +257,19 @@ class OnPolicyAgent(Agent):
         self.model.ep_info_buffer.append(lastinfo)
         if done:
             self.model.ep_info_buffer.append({"r": 0, "l": 0})
+
+    def finish_training(self, last_obs: Observation) -> bool:
+        """
+        Train a final full rollout after the outer ego training loop ends.
+
+        :param last_obs: Partner observation following the final transition
+        :returns: Whether a full rollout was trained
+        """
+        if not self.model.rollout_buffer.full:
+            return False
+
+        self._train_rollout(value_from_policy(last_obs.obs, self.model.policy))
+        return True
 
     def learn(self, **kwargs) -> None:
         """ Call the model's learn function with the given parameters """

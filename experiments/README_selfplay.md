@@ -37,7 +37,24 @@ Each run writes:
 - `ego_model.zip`
 - `partner_model.zip`
 - `config.json`
+- `training_status.json`
 - TensorBoard logs under `logs/`
+
+Runs are written to a configuration-specific directory such as:
+
+```text
+results/selfplay/ppo/simple/seed_0/steps_500000__partner_offset_1000/
+```
+
+Training first writes to a neighboring hidden `.tmp` directory. The completed
+directory is published only after training, final partner rollout processing,
+model saving, and metadata writing all succeed. Existing completed or temporary
+run directories are never overwritten.
+
+`config.json` and `training_status.json` record both the requested timestep
+budget and the actual Ego and Partner timesteps. On-policy algorithms finish a
+complete rollout before stopping, so actual timesteps can exceed the requested
+budget.
 
 ## Entropy Sensitivity
 
@@ -71,8 +88,11 @@ Omit `--ent-coef` to use the Stable-Baselines3 default.
 python experiments/evaluate_selfplay.py \
   --algo ppo \
   --layout simple \
-  --run-dir results/selfplay/ppo/simple/seed_0 \
+  --run-dir \
+  results/selfplay/ppo/simple/seed_0/steps_500000__partner_offset_1000 \
   --episodes 100
 ```
 
 This writes `evaluation.json` and `evaluation.csv` in the run directory.
+Evaluation refuses to run when `--algo` or `--layout` does not match the
+completed run's `config.json`.

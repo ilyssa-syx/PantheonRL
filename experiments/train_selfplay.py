@@ -16,7 +16,7 @@ import argparse
 import json
 from pathlib import Path
 import sys
-from typing import Any, Dict, Type
+from typing import Any, Dict, Optional, Tuple, Type
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -133,21 +133,56 @@ def build_model_kwargs(args: argparse.Namespace) -> Dict[str, Any]:
     return kwargs
 
 
-def make_run_dir(args: argparse.Namespace) -> Path:
-    suffix = ""
-    if args.ent_coef is not None:
-        suffix = f"_ent_coef_{args.ent_coef:g}"
-    run_dir = args.output_dir / args.algo / args.layout / f"seed_{args.seed}{suffix}"
-    run_dir.mkdir(parents=True, exist_ok=True)
-    (run_dir / "logs").mkdir(exist_ok=True)
-    return run_dir
+def validate_args(args: argparse.Namespace) -> None:
+    if args.timesteps <= 0:
+        raise ValueError("--timesteps must be positive")
+    if args.n_steps is not None and args.n_steps <= 0:
+        raise ValueError("--n-steps must be positive")
+
+
+def make_run_name(args: argparse.Namespace) -> str:
+    parts = [
+        f"steps_{args.timesteps}",
+        f"partner_offset_{args.partner_seed_offset}",
+    ]
+    for name in ("ent_coef", "learning_rate", "gamma", "n_steps"):
+        value = getattr(args, name)
+        if value is not None:
+            parts.append(f"{name}_{value}")
+    return "__".join(parts)
+
+
+def prepare_run_dirs(args: argparse.Namespace) -> Tuple[Path, Path]:
+    run_dir = (
+        args.output_dir
+        / args.algo
+        / args.layout
+        / f"seed_{args.seed}"
+        / make_run_name(args)
+    )
+    working_dir = run_dir.with_name(f".{run_dir.name}.tmp")
+
+    if run_dir.exists():
+        raise FileExistsError(
+            f"Run directory already exists; refusing to overwrite: {run_dir}")
+    if working_dir.exists():
+        raise FileExistsError(
+            "A temporary run directory already exists. Inspect or remove it "
+            f"before retrying: {working_dir}")
+
+    working_dir.mkdir(parents=True)
+    (working_dir / "logs").mkdir()
+    return run_dir, working_dir
 
 
 def save_config(
-    run_dir: Path,
+    output_dir: Path,
+    final_run_dir: Path,
     args: argparse.Namespace,
     partner_seed: int,
     model_kwargs: Dict[str, Any],
+    actual_ego_timesteps: Optional[int] = None,
+    actual_partner_timesteps: Optional[int] = None,
 ) -> None:
     config = {
         "algo": args.algo,
@@ -156,12 +191,14 @@ def save_config(
         "ego_seed": args.seed,
         "partner_seed": partner_seed,
         "partner_seed_offset": args.partner_seed_offset,
-        "timesteps": args.timesteps,
+        "requested_timesteps": args.timesteps,
+        "actual_ego_timesteps": actual_ego_timesteps,
+        "actual_partner_timesteps": actual_partner_timesteps,
         "policy": "MlpPolicy",
         "partner_wrapper": "OnPolicyAgent",
         "self_play_type": "independent_self_play",
         "model_kwargs": model_kwargs,
-        "output_dir": str(run_dir),
+        "output_dir": str(final_run_dir),
         "saved_files": {
             "ego_model": "ego_model.zip",
             "partner_model": "partner_model.zip",
@@ -169,19 +206,30 @@ def save_config(
             "training_status": "training_status.json",
         },
     }
-    with (run_dir / "config.json").open("w", encoding="utf-8") as f:
+    with (output_dir / "config.json").open("w", encoding="utf-8") as f:
         json.dump(config, f, indent=2, sort_keys=True)
         f.write("\n")
 
 
-def save_training_status(run_dir: Path, args: argparse.Namespace) -> None:
+def save_training_status(
+    run_dir: Path,
+    args: argparse.Namespace,
+    status_name: str,
+    actual_ego_timesteps: Optional[int] = None,
+    actual_partner_timesteps: Optional[int] = None,
+    error: Optional[str] = None,
+) -> None:
     status = {
-        "status": "completed",
+        "status": status_name,
         "algo": args.algo,
         "layout": args.layout,
         "seed": args.seed,
-        "timesteps": args.timesteps,
+        "requested_timesteps": args.timesteps,
+        "actual_ego_timesteps": actual_ego_timesteps,
+        "actual_partner_timesteps": actual_partner_timesteps,
     }
+    if error is not None:
+        status["error"] = error
     with (run_dir / "training_status.json").open("w", encoding="utf-8") as f:
         json.dump(status, f, indent=2, sort_keys=True)
         f.write("\n")
@@ -189,56 +237,95 @@ def save_training_status(run_dir: Path, args: argparse.Namespace) -> None:
 
 def main() -> None:
     args = parse_args()
+    validate_args(args)
     algo_cls = ALGOS[args.algo]
     partner_seed = args.seed + args.partner_seed_offset
-    run_dir = make_run_dir(args)
+    run_dir, working_dir = prepare_run_dirs(args)
     model_kwargs = build_model_kwargs(args)
 
     set_random_seed(args.seed)
 
-    env = gym.make("OvercookedMultiEnv-v0", layout_name=args.layout)
-    
-    if not hasattr(env, "seed"):
-
-        env.seed = lambda seed=None: None
-
-    partner_env = env.getDummyEnv(1)
-
-    if not hasattr(partner_env, "seed"):
-
-        partner_env.seed = lambda seed=None: None
-
     print(f"Training {args.algo.upper()} on layout={args.layout}, seed={args.seed}")
-    print(f"Writing outputs to: {run_dir}")
+    print(f"Working directory: {working_dir}")
+    print(f"Completed run directory: {run_dir}")
 
-    partner_model = algo_cls(
-        "MlpPolicy",
-        partner_env,
-        seed=partner_seed,
-        tensorboard_log=str(run_dir / "logs" / "partner"),
-        **model_kwargs,
-    )
-    partner_agent = OnPolicyAgent(
-        partner_model,
-        tensorboard_log=str(run_dir / "logs" / "partner_agent"),
-        tb_log_name=f"{args.algo.upper()}Partner",
-    )
-    env.add_partner_agent(partner_agent)
+    save_config(
+        working_dir, run_dir, args, partner_seed, model_kwargs)
+    save_training_status(working_dir, args, "running")
 
-    ego_model = algo_cls(
-        "MlpPolicy",
-        env,
-        seed=args.seed,
-        tensorboard_log=str(run_dir / "logs" / "ego"),
-        **model_kwargs,
-    )
+    env = None
+    ego_model = None
+    partner_model = None
+    try:
+        env = gym.make("OvercookedMultiEnv-v0", layout_name=args.layout)
+        partner_env = env.getDummyEnv(1)
 
-    save_config(run_dir, args, partner_seed, model_kwargs)
-    ego_model.learn(total_timesteps=args.timesteps)
+        partner_model = algo_cls(
+            "MlpPolicy",
+            partner_env,
+            seed=partner_seed,
+            tensorboard_log=str(working_dir / "logs" / "partner"),
+            **model_kwargs,
+        )
+        partner_agent = OnPolicyAgent(
+            partner_model,
+            tensorboard_log=str(working_dir / "logs" / "partner_agent"),
+            tb_log_name=f"{args.algo.upper()}Partner",
+        )
+        env.add_partner_agent(partner_agent)
 
-    ego_model.save(run_dir / "ego_model")
-    partner_model.save(run_dir / "partner_model")
-    save_training_status(run_dir, args)
+        ego_model = algo_cls(
+            "MlpPolicy",
+            env,
+            seed=args.seed,
+            tensorboard_log=str(working_dir / "logs" / "ego"),
+            **model_kwargs,
+        )
+
+        partner_agent.set_total_training_timesteps(args.timesteps)
+
+        ego_model.learn(total_timesteps=args.timesteps)
+        partner_agent.finish_training(env.get_player_observation(1))
+
+        actual_ego_timesteps = ego_model.num_timesteps
+        actual_partner_timesteps = partner_model.num_timesteps
+
+        # Save final paths into the models rather than temporary log paths.
+        ego_model.tensorboard_log = str(run_dir / "logs" / "ego")
+        partner_model.tensorboard_log = str(run_dir / "logs" / "partner")
+        ego_model.save(working_dir / "ego_model")
+        partner_model.save(working_dir / "partner_model")
+        save_config(
+            working_dir,
+            run_dir,
+            args,
+            partner_seed,
+            model_kwargs,
+            actual_ego_timesteps,
+            actual_partner_timesteps,
+        )
+        save_training_status(
+            working_dir,
+            args,
+            "completed",
+            actual_ego_timesteps,
+            actual_partner_timesteps,
+        )
+    except Exception as exc:
+        save_training_status(
+            working_dir,
+            args,
+            "failed",
+            getattr(ego_model, "num_timesteps", None),
+            getattr(partner_model, "num_timesteps", None),
+            str(exc),
+        )
+        raise
+    finally:
+        if env is not None:
+            env.close()
+
+    working_dir.rename(run_dir)
     print("Training complete.")
 
 

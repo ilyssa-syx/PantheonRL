@@ -81,6 +81,17 @@ def action_from_policy(
     return actions.cpu().numpy(), values, log_probs
 
 
+def value_from_policy(
+    obs: np.ndarray,
+    policy: policies.ActorCriticPolicy
+) -> th.Tensor:
+    """Return the value estimate for an observation."""
+    obs = obs.reshape((-1,) + policy.observation_space.shape)
+    with th.no_grad():
+        obs_tensor = obs_as_tensor(obs, policy.device)
+        return policy.predict_values(obs_tensor)
+
+
 def clip_actions(
     actions: np.ndarray,
     policy: Union[policies.ActorCriticPolicy, BaseAlgorithm]
