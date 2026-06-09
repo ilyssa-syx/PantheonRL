@@ -1,0 +1,9 @@
+{
+  "actual_ego_timesteps": 500000,
+  "actual_partner_timesteps": 500000,
+  "algo": "a2c",
+  "layout": "unident_s",
+  "requested_timesteps": 500000,
+  "seed": 0,
+  "status": "completed"
+}
