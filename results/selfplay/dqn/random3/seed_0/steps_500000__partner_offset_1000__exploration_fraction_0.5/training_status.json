@@ -1,0 +1,15 @@
+{
+  "actual_ego_timesteps": 500000,
+  "actual_partner_timesteps": 500000,
+  "algo": "dqn",
+  "ego_replay_transitions": 500000,
+  "ego_updates": 112500,
+  "exploration_fraction": 0.5,
+  "layout": "random3",
+  "partner_replay_transitions": 500000,
+  "partner_updates": 112500,
+  "requested_timesteps": 500000,
+  "seed": 0,
+  "status": "completed",
+  "wall_clock_seconds": 696.5272417720407
+}
