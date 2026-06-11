@@ -9,6 +9,10 @@ the current experiment plan:
   `model.predict(obs, deterministic=True)`.
 - `run_dqn_experiments_tonight.py`: runs the complete 45-run DQN matrix and
   evaluates every completed run.
+- `train_dqn_alternating.py`: alternates training one DQN while freezing the
+  other DQN.
+- `run_dqn_alternating_experiments.py`: runs the complete 45-run Alternating
+  DQN matrix.
 
 Run commands from the `PantheonRL` directory.
 
@@ -99,7 +103,8 @@ python experiments/evaluate_selfplay.py \
 
 This writes `evaluation.json` and `evaluation.csv` in the run directory.
 Evaluation refuses to run when `--algo` or `--layout` does not match the
-completed run's `config.json`.
+completed run's `config.json`. The outputs include total return, sparse return,
+shaped return, and number of soup deliveries for every episode.
 
 ## DQN Training
 
@@ -157,3 +162,39 @@ The launcher skips completed training and evaluation outputs, continues after
 individual failures by default, and records progress in
 `results/selfplay/dqn_batch_status.json`. Smoke-test progress is written to
 `dqn_smoke_status.json` instead.
+
+## Alternating DQN
+
+Alternating DQN freezes one deterministic model while training the other, then
+switches physical player roles. The default run gives each model 500,000
+training steps in 50,000-step phases:
+
+```bash
+python experiments/train_dqn_alternating.py \
+  --layout simple \
+  --seed 0 \
+  --timesteps-per-agent 500000 \
+  --phase-timesteps 50000 \
+  --exploration-fraction 0.1 \
+  --device cpu
+```
+
+Only the latest `ego_model.zip` and `partner_model.zip` are saved and replaced
+after completed phases. Replay buffers are retained in memory during an
+uninterrupted run but are not checkpointed, keeping the output small. An
+interrupted run resumes from the latest two models and the next unfinished
+phase.
+
+Run the complete 45-run matrix and 100-episode deterministic evaluations with:
+
+```bash
+python experiments/run_dqn_alternating_experiments.py
+```
+
+Before the full matrix, verify the pipeline with:
+
+```bash
+python experiments/run_dqn_alternating_experiments.py \
+  --smoke-test \
+  --output-dir results/alternating_dqn_smoke
+```

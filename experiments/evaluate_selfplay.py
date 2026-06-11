@@ -59,7 +59,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def run_episode(model: BaseAlgorithm, env: gym.Env) -> float:
+def run_episode(model: BaseAlgorithm, env: gym.Env) -> Dict[str, float]:
     obs = env.reset()
     done = False
     episode_return = 0.0
@@ -67,7 +67,16 @@ def run_episode(model: BaseAlgorithm, env: gym.Env) -> float:
         action, _ = model.predict(obs, deterministic=True)
         obs, reward, done, _ = env.step(action)
         episode_return += float(reward)
-    return episode_return
+    base_env = env.unwrapped.base_env
+    sparse_return = float(base_env.cumulative_sparse_rewards)
+    shaped_return = float(base_env.cumulative_shaped_rewards)
+    delivery_reward = float(env.unwrapped.mdp.delivery_reward)
+    return {
+        "total_return": episode_return,
+        "sparse_return": sparse_return,
+        "shaped_return": shaped_return,
+        "deliveries": sparse_return / delivery_reward,
+    }
 
 
 def load_and_validate_config(args: argparse.Namespace) -> Dict[str, Any]:
@@ -116,10 +125,14 @@ def main() -> None:
         )
         ego_model = algo_cls.load(
             args.run_dir / "ego_model", env=env, device=args.device)
-        returns = [run_episode(ego_model, env) for _ in range(args.episodes)]
+        episodes = [run_episode(ego_model, env) for _ in range(args.episodes)]
     finally:
         env.close()
 
+    returns = [episode["total_return"] for episode in episodes]
+    sparse_returns = [episode["sparse_return"] for episode in episodes]
+    shaped_returns = [episode["shaped_return"] for episode in episodes]
+    deliveries = [episode["deliveries"] for episode in episodes]
     results = {
         "algo": args.algo,
         "layout": args.layout,
@@ -131,7 +144,9 @@ def main() -> None:
         "training_effective_hyperparameters": config.get(
             "effective_hyperparameters"),
         "training_requested_timesteps": config.get(
-            "requested_timesteps", config.get("timesteps")),
+            "requested_timesteps",
+            config.get("timesteps", config.get("timesteps_per_agent")),
+        ),
         "training_actual_ego_timesteps": config.get("actual_ego_timesteps"),
         "training_actual_partner_timesteps": config.get(
             "actual_partner_timesteps"),
@@ -139,11 +154,17 @@ def main() -> None:
         "deterministic": True,
         "device": str(ego_model.device),
         "episode_returns": returns,
+        "episode_sparse_returns": sparse_returns,
+        "episode_shaped_returns": shaped_returns,
+        "episode_deliveries": deliveries,
         "mean_return": mean(returns),
         "std_return": pstdev(returns),
         "median_return": median(returns),
         "min_return": min(returns),
         "max_return": max(returns),
+        "mean_sparse_return": mean(sparse_returns),
+        "mean_shaped_return": mean(shaped_returns),
+        "mean_deliveries": mean(deliveries),
     }
 
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -154,9 +175,25 @@ def main() -> None:
     csv_path = output.with_suffix(".csv")
     with csv_path.open("w", encoding="utf-8", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["episode", "return"])
-        for episode, episode_return in enumerate(returns):
-            writer.writerow([episode, episode_return])
+        writer.writerow(
+            [
+                "episode",
+                "total_return",
+                "sparse_return",
+                "shaped_return",
+                "deliveries",
+            ]
+        )
+        for episode_index, episode in enumerate(episodes):
+            writer.writerow(
+                [
+                    episode_index,
+                    episode["total_return"],
+                    episode["sparse_return"],
+                    episode["shaped_return"],
+                    episode["deliveries"],
+                ]
+            )
 
 
 if __name__ == "__main__":

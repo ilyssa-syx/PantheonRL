@@ -1,0 +1,18 @@
+{
+  "actual_ego_timesteps": 500000,
+  "actual_partner_timesteps": 500000,
+  "algo": "dqn",
+  "completed_phases": 20,
+  "ego_replay_transitions_in_memory": 500000,
+  "ego_updates": 112500,
+  "latest_models_only": true,
+  "layout": "random0",
+  "next_role": null,
+  "partner_replay_transitions_in_memory": 500000,
+  "partner_updates": 112500,
+  "seed": 1,
+  "self_play_type": "alternating_self_play",
+  "status": "completed",
+  "total_phases": 20,
+  "wall_clock_seconds": 1016.3406121199951
+}

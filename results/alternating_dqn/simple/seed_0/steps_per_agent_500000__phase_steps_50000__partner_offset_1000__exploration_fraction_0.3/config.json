@@ -1,0 +1,50 @@
+{
+  "actual_ego_timesteps": 500000,
+  "actual_partner_timesteps": 500000,
+  "algo": "dqn",
+  "effective_hyperparameters": {
+    "batch_size": 32,
+    "buffer_size": 1000000,
+    "exploration_final_eps": 0.05,
+    "exploration_fraction": 0.3,
+    "exploration_initial_eps": 1.0,
+    "gamma": 0.99,
+    "gradient_steps": 1,
+    "learning_rate": 0.0001,
+    "learning_starts": 50000,
+    "target_update_interval": 10000,
+    "tau": 1.0,
+    "train_freq": {
+      "frequency": 4,
+      "unit": "step"
+    }
+  },
+  "frozen_partner_wrapper": "StaticModelAgent",
+  "latest_models_only": true,
+  "layout": "simple",
+  "model_kwargs": {
+    "device": "cpu",
+    "exploration_fraction": 0.3,
+    "verbose": 0
+  },
+  "output_dir": "results/alternating_dqn/simple/seed_0/steps_per_agent_500000__phase_steps_50000__partner_offset_1000__exploration_fraction_0.3",
+  "partner_seed": 1000,
+  "partner_seed_offset": 1000,
+  "phase_order": [
+    "ego",
+    "partner"
+  ],
+  "phase_timesteps": 50000,
+  "policy": "MlpPolicy",
+  "replay_buffer_policy": "retained_in_memory_between_phases_not_checkpointed",
+  "saved_files": {
+    "config": "config.json",
+    "ego_model": "ego_model.zip",
+    "partner_model": "partner_model.zip",
+    "phase_history": "phase_history.json",
+    "training_status": "training_status.json"
+  },
+  "seed": 0,
+  "self_play_type": "alternating_self_play",
+  "timesteps_per_agent": 500000
+}
