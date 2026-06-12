@@ -1,0 +1,25 @@
+{
+  "actual_ego_timesteps": 500000,
+  "actual_partner_timesteps": 500000,
+  "algo": "a2c",
+  "ego_seed": 2,
+  "layout": "random1",
+  "model_kwargs": {
+    "device": "auto",
+    "verbose": 1
+  },
+  "output_dir": "results/selfplay/a2c/random1/seed_2/steps_500000__partner_offset_1000",
+  "partner_seed": 1002,
+  "partner_seed_offset": 1000,
+  "partner_wrapper": "OnPolicyAgent",
+  "policy": "MlpPolicy",
+  "requested_timesteps": 500000,
+  "saved_files": {
+    "config": "config.json",
+    "ego_model": "ego_model.zip",
+    "partner_model": "partner_model.zip",
+    "training_status": "training_status.json"
+  },
+  "seed": 2,
+  "self_play_type": "independent_self_play"
+}

@@ -3,6 +3,7 @@ from typing import List, Tuple, Dict, Optional, Callable, Any, Union
 from dataclasses import dataclass
 
 import gym
+from gym.utils import seeding
 import numpy as np
 
 from .agents import Agent
@@ -68,6 +69,26 @@ class MultiAgentEnv(gym.Env, ABC):
         self.set_resample_policy(resample_policy)
 
         self.ego_extractor = ego_extractor
+        self.seed()
+
+    def seed(self, seed: Optional[int] = None) -> List[int]:
+        """
+        Seed this old-style Gym environment for SB3/Gymnasium compatibility.
+
+        Newer Stable-Baselines3 versions call ``env.seed(seed)`` through
+        shimmy when wrapping OpenAI Gym environments. PantheonRL environments
+        predate that API, so the base multi-agent environment provides it here.
+        """
+        self.np_random, seed = seeding.np_random(seed)
+        legacy_seed = seed % (2 ** 32)
+        np.random.seed(legacy_seed)
+        action_space = getattr(self, "action_space", None)
+        observation_space = getattr(self, "observation_space", None)
+        if hasattr(action_space, "seed"):
+            action_space.seed(legacy_seed)
+        if hasattr(observation_space, "seed"):
+            observation_space.seed(legacy_seed)
+        return [seed]
 
     def getDummyEnv(self, player_num: int):
         """
