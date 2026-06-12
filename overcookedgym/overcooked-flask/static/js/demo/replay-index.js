@@ -19,7 +19,9 @@ let PARAMS = {
     PLAYER_INDEX: 1,  // Either 0 or 1
     MODEL_TYPE: 'ppo_bc'  // Either ppo_bc, ppo_sp, or pbt
 };
-let trajectoryPath = "static/assets/test_traj.json";
+let queryParams = new URLSearchParams(window.location.search);
+let trajectoryPath = queryParams.get("trajectory") || "static/assets/test_traj.json";
+let serverTrajectory = queryParams.get("server_file") === "1";
 let trajectoryData; 
 /***********************************
       Main trial order
@@ -102,7 +104,13 @@ function replayTrajectory(trajectoryDataObj, endOfGameCallback) {
         DELIVERY_REWARD: PARAMS.DELIVERY_POINTS
 
     })
+    let stepMs = Number(queryParams.get("step_ms"));
+    if (Number.isFinite(stepMs) && stepMs > 0) {
+        game.seconds_per_step = stepMs / 1000;
+    }
     game.init()
+    $("#playPause").off("click").on("click", () => game.toggle_playing());
+    $("#reset").off("click").on("click", () => game.restart());
 
 }
 
@@ -161,18 +169,49 @@ function enableEnter() {
     $(document).keydown(startGameOnEnter);
     $("#fileInput").on("change", onChange); 
     if ($("#fileInfo").is(':empty')) {
-        $("#fileInfo").html("<p>Reading trajectory info from " + trajectoryPath + "</p>");
+        if (serverTrajectory) {
+            $.getJSON("/trajectory-info", function(info) {
+                $("#fileInfo").html(
+                    "<p>Loaded server trajectory from command line: <code>" +
+                    _.escape(info.path) + "</code></p>"
+                );
+            });
+        }
+        else {
+            $("#fileInfo").html("<p>Reading trajectory info from " + trajectoryPath + "</p>");
+        }
     }
     $("#control").html("<p>Press enter to begin!</p>");
 }
 
 function disableEnter() {
     $(document).off("keydown");
-    $("#control").html('<button id="reset" type="button" class="btn btn-primary">Reset</button> <button id="clearFile" type="button" class="btn btn-primary">Clear File</button>');
-    $("#reset").click(endGame);
-    $("#clearFile").click(clearFile);
+    let controls = '<button id="playPause" type="button" class="btn btn-primary">Pause</button> ';
+    controls += '<button id="reset" type="button" class="btn btn-primary">Reset</button>';
+    if (!serverTrajectory) {
+        controls += ' <button id="clearFile" type="button" class="btn btn-primary">Clear File</button>';
+    }
+    $("#control").html(controls);
+    if (!serverTrajectory) {
+        $("#clearFile").click(clearFile);
+    }
 }
 
 $(document).ready(() => {
-    enableEnter();
+    if (serverTrajectory) {
+        $("form").hide();
+        $.getJSON("/trajectory-info", function(info) {
+            $("#fileInfo").html(
+                "<p>Loaded server trajectory from command line: <code>" +
+                _.escape(info.path) + "</code></p>"
+            );
+        });
+    }
+    if (queryParams.get("autoplay") === "1") {
+        disableEnter();
+        replayGame(enableEnter);
+    }
+    else {
+        enableEnter();
+    }
 });

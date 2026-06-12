@@ -58,98 +58,71 @@ export default class OvercookedTrajectoryReplay{
         this.completion_callback = completion_callback;
         this.timestep_callback = timestep_callback;
         this.total_timesteps = this.observations.length - 1;
-        this.paused = false;
-        this.keyboard_paused = false;
-        this.last_step_time = new Date().getTime();
+        this.is_playing = true;
+        this.is_scrubbing = false;
+        this.resume_after_scrub = false;
+        this.last_step_time = Date.now();
         this.seconds_per_step = 0.5;
-        this.speed_play = 0;
-        this.speed_seconds_per_step = 0.1; 
     }
 
 
     init() {
         this.game.init();
+        this.activate_response_listener();
+        this.render_step(0);
+        this.set_playing(true);
+        this.gameloop = setInterval(() => this.tick(), 50);
+    }
 
-        this.start_time = new Date().getTime();
-	
-        this.gameloop = setInterval(() => {
-            if (this.cur_gameloop > this.total_timesteps) {
-                this.close()
-            }
-            if (this.cur_gameloop < 0) {
-                this.cur_gameloop = 0;
-            }
-            let game_loop_percentage = Math.round(100*this.cur_gameloop/this.total_timesteps);
-            document.getElementById("stepSlider").value = game_loop_percentage; 
+    tick() {
+        if (!this.is_playing || this.is_scrubbing) {
+            return;
+        }
+        let now = Date.now();
+        if ((now - this.last_step_time) / 1000 < this.seconds_per_step) {
+            return;
+        }
+        if (this.cur_gameloop >= this.total_timesteps) {
+            this.set_playing(false);
+            return;
+        }
+        this.last_step_time = now;
+        this.render_step(this.cur_gameloop + 1);
+    }
 
-            if (this.time_left == 0) {
-                this.close();
-            }
+    render_step(step) {
+        this.cur_gameloop = Math.max(
+            0, Math.min(this.total_timesteps, Number(step))
+        );
+        this.state = dictToState(this.observations[this.cur_gameloop]);
+        if (this.state.order_list == null) {
+            this.state.order_list = [];
+        }
+        this.game.drawState(this.state);
 
-            if (this.paused == false && this.keyboard_paused == false) {
-                this.disable_response_listener()
-                this.last_step_time = new Date().getTime();
-                let state_dict = this.observations[this.cur_gameloop]
-              
-                this.state = dictToState(state_dict)
+        this.time_left = this.total_timesteps - this.cur_gameloop;
+        this.game.drawTimeLeft(this.time_left);
+        document.getElementById("stepSlider").value = this.cur_gameloop;
+        document.getElementById("stepLabel").textContent =
+            `${this.cur_gameloop} / ${this.total_timesteps}`;
+    }
 
-                this.game.drawState(this.state);
-                let actions_arr = this.actions[this.cur_gameloop]; 
-                this.joint_action = lookupActions(actions_arr);
-                // read the two player actions out of the trajectory 
-                // Do a transition and get the next state and reward.
-                let  [[next_state, prob], reward] =
-                    this.game.mdp.get_transition_states_and_probs({
-                        state: this.state,
-                        joint_action: this.joint_action
-                    });
+    set_playing(is_playing) {
+        this.is_playing = Boolean(is_playing);
+        this.last_step_time = Date.now();
+        let button = document.getElementById("playPause");
+        if (button !== null) {
+            button.textContent = this.is_playing ? "Pause" : "Play";
+        }
+    }
 
-                this.time_left = this.total_timesteps - this.cur_gameloop
-                this.game.drawTimeLeft(this.time_left);
+    toggle_playing() {
+        this.set_playing(!this.is_playing);
+    }
 
-                //record data
-                this.timestep_callback({
-                    state: this.state,
-                    joint_action: this.joint_action,
-                    next_state: next_state,
-                    reward: reward,
-                    time_left: this.time_left,
-                    score: this.score,
-                    time_elapsed: this.cur_gameloop,
-                    cur_gameloop: this.cur_gameloop,
-                    client_id: undefined,
-                    is_leader: undefined,
-                    partner_id: undefined,
-                    datetime: +new Date()
-                });
-                //set up next timestep
-                this.paused = true
-                this.activate_response_listener();
-            }
-            let seconds_since_step = (new Date().getTime() - this.last_step_time)/1000; 
-            if (this.keyboard_paused == false) {
-                if (this.speed_play < 0 && seconds_since_step > this.speed_seconds_per_step) {
-                    this.paused = false;
-                    this.cur_gameloop -= 1;
-                }
-                else if (this.speed_play > 0 && seconds_since_step > this.speed_seconds_per_step) {
-                    this.paused = false;
-                    this.cur_gameloop += 1;
-                }
-                else if (this.speed_play == 0 && seconds_since_step > this.seconds_per_step) {
-                    this.paused = false;
-                    this.cur_gameloop += 1;
-                }
-            }
-            
-
-            //time run out
-            
-        }, this.TIMESTEP);
-        //By default it seems like we'd want to remove the response listener 
-        // But we could maybe also keep a response listener that takes in the keys Left and Right 
-        // And if it gets left it regresses the state, and if it gets. right, it progresses the state
-        //this.activate_response_listener();
+    restart() {
+        this.render_step(0);
+        this.set_playing(true);
     }
 
     close () {
@@ -162,53 +135,56 @@ export default class OvercookedTrajectoryReplay{
     }
 
     activate_response_listener () {
-        var slider = document.getElementById("stepSlider");
-        let total_timesteps = this.total_timesteps; 
-        let game = this; 
-        slider.oninput = function() {
-            let slider_percent = this.value/100.0;
-            game.cur_gameloop = Math.round(slider_percent*game.total_timesteps); 
-            game.paused = false;
-        }
-        $(document).on("keydown", (e) => {
+        let slider = document.getElementById("stepSlider");
+        slider.min = 0;
+        slider.max = this.total_timesteps;
+        slider.step = 1;
+        slider.value = 0;
+
+        $(slider).off(".overcookedReplay");
+        $(slider).on(
+            "mousedown.overcookedReplay touchstart.overcookedReplay",
+            () => {
+                this.is_scrubbing = true;
+                this.resume_after_scrub = this.is_playing;
+                this.set_playing(false);
+            }
+        );
+        $(slider).on("input.overcookedReplay", (e) => {
+            this.render_step(Number(e.target.value));
+        });
+        $(slider).on(
+            "change.overcookedReplay mouseup.overcookedReplay touchend.overcookedReplay",
+            () => {
+                this.is_scrubbing = false;
+                this.set_playing(this.resume_after_scrub);
+            }
+        );
+
+        $(document).off(".overcookedReplay");
+        $(document).on("keydown.overcookedReplay", (e) => {
             switch(e.which) {
             case 37: // left
-                this.cur_gameloop -= 1;
-                this.speed_play = -1; 
-                this.paused = false; 
+                this.set_playing(false);
+                this.render_step(this.cur_gameloop - 1);
                 break;
 
             case 39: // right
-                this.cur_gameloop += 1;
-                this.speed_play = +1; 
-                this.paused = false; 
+                this.set_playing(false);
+                this.render_step(this.cur_gameloop + 1);
                 break;
 
             case 32: //space
-                if (this.keyboard_paused) {
-                    this.keyboard_paused = false;
-                    console.log("Unpausing")
-                }
-                else {
-                    this.keyboard_paused = true;
-                    console.log("Pausing")
-                }
-                
+                this.toggle_playing();
                 break;
             default: return; // exit this handler for other keys
             }
             e.preventDefault(); // prevent the default action (scroll / move caret)
         });
-
-	$(document).on("keyup", (e) => {
-            if (e.which == 37 || e.which == 39) {
-		this.speed_play = 0; 
-            }
-            
-	}); 
     }
 
     disable_response_listener () {
-        $(document).off('keydown');
+        $(document).off(".overcookedReplay");
+        $("#stepSlider").off(".overcookedReplay");
     }
 }

@@ -14,3 +14,9 @@ Make sure you have installed Overcooked by following the instructions in the REA
 
 #### Watch the replay of the saved trajectory.
     python overcookedgym/overcooked-flask/app.py --layout_name simple --replay_traj trajs/OvercookedMultiEnv-v0-simple-PPOHuman-10
+
+#### Watch a browser replay JSON, including episodes exported from HARL.
+    /root/miniforge3/envs/pantheonrl/bin/python overcookedgym/overcooked-flask/app.py --replay_json /path/to/replay.json
+
+Open http://127.0.0.1:5000/. The replay starts automatically. When using a
+remote container, first forward port 5000 from the VS Code Ports panel.

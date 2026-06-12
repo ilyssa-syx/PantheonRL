@@ -1,19 +1,9 @@
 import os
-import io
 import json
 import copy
 import argparse
-import torch
-import numpy as np
-import gym
 
-from flask import Flask, jsonify, request
-from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld, OvercookedState, PlayerState, ObjectState
-from overcooked_ai_py.planning.planners import MediumLevelPlanner, NO_COUNTERS_PARAMS
-from stable_baselines3 import PPO
-
-from overcookedgym.overcooked_utils import NAME_TRANSLATION
-from pantheonrl.common.trajsaver import SimultaneousTransitions
+from flask import Flask, jsonify, redirect, request, send_file
 
 app = Flask(__name__)
 
@@ -156,7 +146,31 @@ def updatemodel():
 
 @app.route('/')
 def root():
+    if ARGS.replay_json:
+        return redirect(
+            '/replay?trajectory=/trajectory&autoplay=1&step_ms=150'
+            '&server_file=1'
+        )
     return app.send_static_file('index.html')
+
+
+@app.route('/replay')
+def replay():
+    return app.send_static_file('replay.html')
+
+
+@app.route('/trajectory')
+def trajectory():
+    if not ARGS.replay_json:
+        return jsonify({'error': 'No --replay_json file was configured'}), 404
+    return send_file(ARGS.replay_json, mimetype='application/json')
+
+
+@app.route('/trajectory-info')
+def trajectory_info():
+    if not ARGS.replay_json:
+        return jsonify({'error': 'No --replay_json file was configured'}), 404
+    return jsonify({'path': ARGS.replay_json})
 
 
 if __name__ == '__main__':
@@ -168,31 +182,80 @@ if __name__ == '__main__':
                         help="path to load model for player 1")
     parser.add_argument('--replay_traj', type=str,
                         help="replay traj, don't run policies")
+    parser.add_argument('--replay_json', type=str,
+                        help="browser replay JSON exported from HARL")
     parser.add_argument('--layout_name', type=str,
-                        required=True, help="layout name")
+                        help="layout name")
     parser.add_argument('--trajs_savepath', type=str,
                         help="path to save trajectories")
+    parser.add_argument('--host', default='0.0.0.0',
+                        help="host interface for the Flask server")
+    parser.add_argument('--port', type=int, default=5000,
+                        help="port for the Flask server")
+    parser.add_argument('--debug', action='store_true',
+                        help="enable Flask debug mode and auto-reloading")
     ARGS = parser.parse_args()
 
-    if ARGS.replay_traj:
-        assert(not ARGS.modelpath_p0 and not ARGS.modelpath_p1)
-        env = gym.make('OvercookedMultiEnv-v0', layout_name=ARGS.layout_name)
-        simultaneous_transitions = SimultaneousTransitions.read_transition(
-            "%s.npy" % ARGS.replay_traj, env.observation_space, env.action_space)
-        EGO_TRANSITIONS = simultaneous_transitions.get_ego_transitions()
-        ALT_TRANSITIONS = simultaneous_transitions.get_alt_transitions()
+    if ARGS.replay_json:
+        if ARGS.modelpath_p0 or ARGS.modelpath_p1 or ARGS.replay_traj:
+            parser.error(
+                '--replay_json cannot be combined with models or --replay_traj')
+        ARGS.replay_json = os.path.abspath(ARGS.replay_json)
+        if not os.path.isfile(ARGS.replay_json):
+            parser.error('replay JSON does not exist: %s' % ARGS.replay_json)
+    elif not ARGS.layout_name:
+        parser.error('--layout_name is required unless --replay_json is used')
     else:
-        # at least one policy should be specified, the other can be human
-        assert(ARGS.modelpath_p0 or ARGS.modelpath_p1)
-        if ARGS.modelpath_p0:
-            POLICY_P0 = PPO.load(ARGS.modelpath_p0)
-        if ARGS.modelpath_p1:
-            POLICY_P1 = PPO.load(ARGS.modelpath_p1)
+        import gym
+        import numpy as np
+        import torch
+        from overcooked_ai_py.mdp.overcooked_mdp import (
+            ObjectState,
+            OvercookedGridworld,
+            OvercookedState,
+            PlayerState,
+        )
+        from overcooked_ai_py.planning.planners import (
+            MediumLevelPlanner,
+            NO_COUNTERS_PARAMS,
+        )
+        from stable_baselines3 import PPO
 
-    # TODO: client should pick layout name, instead of server?
-    # currently both client/server pick layout name, and they must match
-    MDP = OvercookedGridworld.from_layout_name(layout_name=ARGS.layout_name)
-    MLP = MediumLevelPlanner.from_pickle_or_compute(
-        MDP, NO_COUNTERS_PARAMS, force_compute=False)
+        from overcookedgym.overcooked_utils import NAME_TRANSLATION
+        from pantheonrl.common.trajsaver import SimultaneousTransitions
 
-    app.run(debug=True, host='0.0.0.0')
+        if ARGS.replay_traj:
+            assert(not ARGS.modelpath_p0 and not ARGS.modelpath_p1)
+            env = gym.make('OvercookedMultiEnv-v0', layout_name=ARGS.layout_name)
+            simultaneous_transitions = SimultaneousTransitions.read_transition(
+                "%s.npy" % ARGS.replay_traj,
+                env.observation_space,
+                env.action_space,
+            )
+            EGO_TRANSITIONS = simultaneous_transitions.get_ego_transitions()
+            ALT_TRANSITIONS = simultaneous_transitions.get_alt_transitions()
+        else:
+            # at least one policy should be specified, the other can be human
+            assert(ARGS.modelpath_p0 or ARGS.modelpath_p1)
+            if ARGS.modelpath_p0:
+                POLICY_P0 = PPO.load(ARGS.modelpath_p0)
+            if ARGS.modelpath_p1:
+                POLICY_P1 = PPO.load(ARGS.modelpath_p1)
+
+        # TODO: client should pick layout name, instead of server?
+        # currently both client/server pick layout name, and they must match
+        MDP = OvercookedGridworld.from_layout_name(layout_name=ARGS.layout_name)
+        MLP = MediumLevelPlanner.from_pickle_or_compute(
+            MDP, NO_COUNTERS_PARAMS, force_compute=False)
+
+    print(
+        "Starting Overcooked replay viewer on "
+        "http://{0}:{1}/".format(ARGS.host, ARGS.port),
+        flush=True,
+    )
+    app.run(
+        debug=ARGS.debug,
+        host=ARGS.host,
+        port=ARGS.port,
+        use_reloader=ARGS.debug,
+    )
