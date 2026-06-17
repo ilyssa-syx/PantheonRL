@@ -1,0 +1,6 @@
+{
+  "ego_exploration_rate": 0.7720037999999999,
+  "ego_timesteps": 60000,
+  "partner_exploration_rate": 0.7720037999999999,
+  "partner_timesteps": 60000
+}

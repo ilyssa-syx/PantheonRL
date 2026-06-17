@@ -1,0 +1,7 @@
+{
+  "actual_timesteps": 500000,
+  "replay_transitions": 500000,
+  "status": "completed",
+  "updates": 112500,
+  "wall_clock_seconds": 701.4523469088599
+}

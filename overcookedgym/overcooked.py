@@ -8,12 +8,28 @@ from overcooked_ai_py.planning.planners import MediumLevelPlanner, NO_COUNTERS_P
 from pantheonrl.common.multiagentenv import SimultaneousEnv
 
 class OvercookedMultiEnv(SimultaneousEnv):
-    def __init__(self, layout_name, ego_agent_idx=0, baselines=False):
+    def __init__(
+        self,
+        layout_name,
+        ego_agent_idx=0,
+        baselines=False,
+        custom_dense_reward=False,
+        custom_shaping_gamma=0.99,
+        custom_shaping_scale=0.4,
+        progress_weight=None,
+    ):
         """
         base_env: OvercookedEnv
         featurize_fn: what function is used to featurize states returned in the 'both_agent_obs' field
         """
         super(OvercookedMultiEnv, self).__init__()
+        self.custom_dense_reward = bool(custom_dense_reward)
+        self.custom_shaping_gamma = float(custom_shaping_gamma)
+        self.custom_shaping_scale = float(custom_shaping_scale)
+        # Deprecated compatibility knob; custom_shaping_scale is now the
+        # single multiplier applied to progress-score differences.
+        self.progress_weight = progress_weight
+        self.cumulative_custom_shaped_rewards = 0.0
 
         DEFAULT_ENV_PARAMS = {
             "horizon": 400
@@ -28,7 +44,17 @@ class OvercookedMultiEnv(SimultaneousEnv):
         }
 
         self.mdp = OvercookedGridworld.from_layout_name(layout_name=layout_name, rew_shaping_params=rew_shaping_params)
-        mlp = MediumLevelPlanner.from_pickle_or_compute(self.mdp, NO_COUNTERS_PARAMS, force_compute=False)
+        try:
+            mlp = MediumLevelPlanner.from_pickle_or_compute(
+                self.mdp, NO_COUNTERS_PARAMS, force_compute=False
+            )
+        except ValueError as error:
+            if "unsupported pickle protocol" not in str(error):
+                raise
+            print("Recomputing planner due to:", error)
+            mlp = MediumLevelPlanner.from_pickle_or_compute(
+                self.mdp, NO_COUNTERS_PARAMS, force_compute=True
+            )
 
         self.base_env = OvercookedEnv(self.mdp, **DEFAULT_ENV_PARAMS)
         self.featurize_fn = lambda x: self.mdp.featurize_state(x, mlp)
@@ -40,6 +66,67 @@ class OvercookedMultiEnv(SimultaneousEnv):
         self.action_space  = gym.spaces.Discrete( self.lA )
         self.ego_agent_idx = ego_agent_idx
         self.multi_reset()
+
+    def _get_progress_score(self, state):
+        """Return the highest global task-progress phase present in state."""
+        pot_states = self.mdp.get_pot_states(state)
+        counter_objects = self.mdp.get_counter_objects_dict(state)
+        held_object_names = {
+            player.held_object.name
+            for player in state.players
+            if player.held_object is not None
+        }
+
+        loose_ingredient_exists = bool(
+            held_object_names.intersection(("onion", "tomato"))
+            or counter_objects["onion"]
+            or counter_objects["tomato"]
+        )
+        dish_in_transit = bool(
+            "dish" in held_object_names or counter_objects["dish"]
+        )
+        plated_soup_in_transit = bool(
+            "soup" in held_object_names or counter_objects["soup"]
+        )
+
+        ready_pots = pot_states["onion"]["ready"] + pot_states["tomato"]["ready"]
+        cooking_pots = (
+            pot_states["onion"]["cooking"] + pot_states["tomato"]["cooking"]
+        )
+        one_item_pots = (
+            pot_states["onion"]["1_items"] + pot_states["tomato"]["1_items"]
+        )
+        two_item_pots = (
+            pot_states["onion"]["2_items"] + pot_states["tomato"]["2_items"]
+        )
+
+        if plated_soup_in_transit:
+            return 7
+        if ready_pots and dish_in_transit:
+            return 6
+        if ready_pots or (cooking_pots and dish_in_transit):
+            return 5
+        if cooking_pots:
+            return 4
+        if two_item_pots:
+            return 3
+        if one_item_pots:
+            return 2
+        if loose_ingredient_exists:
+            return 1
+        return 0
+
+    def _potential(self, state):
+        return self._get_progress_score(state)
+
+    def _calculate_custom_shaping(self, prev_state, next_state, done):
+        if not self.custom_dense_reward:
+            return 0.0
+        prev_phi = self._potential(prev_state)
+        next_phi = self._potential(next_state)
+        return self.custom_shaping_scale * (
+            self.custom_shaping_gamma * next_phi - prev_phi
+        )
 
     def _setup_observation_space(self):
         dummy_state = self.mdp.get_standard_start_state()
@@ -64,11 +151,16 @@ class OvercookedMultiEnv(SimultaneousEnv):
         else:
             joint_action = (alt_action, ego_action)
 
-        next_state, reward, done, info = self.base_env.step(joint_action)
+        prev_state = self.base_env.state.deepcopy()
+        next_state, sparse_reward, done, info = self.base_env.step(joint_action)
 
-        # reward shaping
-        rew_shape = info['shaped_r']
-        reward = reward + rew_shape
+        built_in_shaped_reward = float(info["shaped_r"])
+        custom_shaped_reward = self._calculate_custom_shaping(
+            prev_state, next_state, done
+        )
+        self.cumulative_custom_shaped_rewards += custom_shaped_reward
+        shaped_reward = built_in_shaped_reward + custom_shaped_reward
+        reward = sparse_reward + shaped_reward
 
         #print(self.base_env.mdp.state_string(next_state))
         ob_p0, ob_p1 = self.featurize_fn(next_state)
@@ -77,7 +169,14 @@ class OvercookedMultiEnv(SimultaneousEnv):
         else:
             ego_obs, alt_obs = ob_p1, ob_p0
 
-        return (ego_obs, alt_obs), (reward, reward), done, {}#info
+        step_info = {
+            "sparse_reward": float(sparse_reward),
+            "built_in_shaped_reward": built_in_shaped_reward,
+            "custom_shaped_reward": float(custom_shaped_reward),
+            "shaped_reward": float(shaped_reward),
+            "total_reward": float(reward),
+        }
+        return (ego_obs, alt_obs), (reward, reward), done, step_info
 
     def multi_reset(self):
         """
@@ -89,6 +188,7 @@ class OvercookedMultiEnv(SimultaneousEnv):
         have to deal with randomizing indices.
         """
         self.base_env.reset()
+        self.cumulative_custom_shaped_rewards = 0.0
         ob_p0, ob_p1 = self.featurize_fn(self.base_env.state)
         if self.ego_agent_idx == 0:
             ego_obs, alt_obs = ob_p0, ob_p1

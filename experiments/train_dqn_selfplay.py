@@ -4,6 +4,7 @@ Train one DQN independent self-play experiment on Overcooked.
 
 import argparse
 import json
+import math
 from pathlib import Path
 import sys
 import time
@@ -15,6 +16,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import gym
 from stable_baselines3 import DQN
+from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.utils import set_random_seed
 
 from pantheonrl.common.agents import OffPolicyAgent
@@ -43,6 +45,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--partner-seed-offset", type=int, default=1000)
     parser.add_argument("--timesteps", type=int, default=500_000)
     parser.add_argument(
+        "--checkpoint-freq",
+        type=int,
+        default=0,
+        help="Save synchronized Ego and Partner checkpoints every N steps; 0 disables.",
+    )
+    parser.add_argument(
         "--exploration-fraction",
         type=float,
         default=0.1,
@@ -52,6 +60,16 @@ def parse_args() -> argparse.Namespace:
         "--output-dir",
         type=Path,
         default=Path("results/selfplay"),
+    )
+    parser.add_argument(
+        "--custom-dense-reward",
+        action="store_true",
+        help="Enable potential-based progress-score shaping.",
+    )
+    parser.add_argument("--custom-shaping-gamma", type=float, default=0.99)
+    parser.add_argument("--custom-shaping-scale", type=float, default=0.4)
+    parser.add_argument(
+        "--progress-weight", type=float, default=None, help=argparse.SUPPRESS
     )
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--verbose", type=int, default=1, choices=[0, 1, 2])
@@ -70,8 +88,19 @@ def parse_args() -> argparse.Namespace:
 def validate_args(args: argparse.Namespace) -> None:
     if args.timesteps <= 0:
         raise ValueError("--timesteps must be positive")
+    if args.checkpoint_freq < 0:
+        raise ValueError("--checkpoint-freq must be non-negative")
     if not 0 < args.exploration_fraction <= 1:
         raise ValueError("--exploration-fraction must be in (0, 1]")
+    if args.custom_shaping_scale < 0:
+        raise ValueError("--custom-shaping-scale must be non-negative")
+    dqn_gamma = 0.99 if args.gamma is None else args.gamma
+    if args.custom_dense_reward and not math.isclose(
+        args.custom_shaping_gamma, dqn_gamma
+    ):
+        raise ValueError(
+            "--custom-shaping-gamma must match the DQN discount factor"
+        )
     for name in (
         "buffer_size",
         "learning_starts",
@@ -105,10 +134,20 @@ def make_run_name(args: argparse.Namespace) -> str:
         f"partner_offset_{args.partner_seed_offset}",
         f"exploration_fraction_{args.exploration_fraction}",
     ]
+    if args.custom_dense_reward:
+        parts.extend(
+            [
+                "progress_score",
+                f"shaping_gamma_{args.custom_shaping_gamma}",
+                f"shaping_scale_{args.custom_shaping_scale}",
+            ]
+        )
     for name in OPTIONAL_MODEL_ARGS:
         value = getattr(args, name)
         if value is not None:
             parts.append(f"{name}_{value}")
+    if args.checkpoint_freq:
+        parts.append(f"checkpoint_freq_{args.checkpoint_freq}")
     return "__".join(parts)
 
 
@@ -178,12 +217,18 @@ def save_config(
         "partner_seed": partner_seed,
         "partner_seed_offset": args.partner_seed_offset,
         "requested_timesteps": args.timesteps,
+        "checkpoint_freq": args.checkpoint_freq,
         "actual_ego_timesteps": actual_ego_timesteps,
         "actual_partner_timesteps": actual_partner_timesteps,
         "wall_clock_seconds": wall_clock_seconds,
         "policy": "MlpPolicy",
         "partner_wrapper": "OffPolicyAgent",
         "self_play_type": "independent_self_play",
+        "env_kwargs": {
+            "custom_dense_reward": args.custom_dense_reward,
+            "custom_shaping_gamma": args.custom_shaping_gamma,
+            "custom_shaping_scale": args.custom_shaping_scale,
+        },
         "model_kwargs": model_kwargs,
         "effective_hyperparameters": effective_params,
         "output_dir": str(final_run_dir),
@@ -192,6 +237,7 @@ def save_config(
             "partner_model": "partner_model.zip",
             "config": "config.json",
             "training_status": "training_status.json",
+            "checkpoints": "checkpoints/",
         },
     }
     with (output_dir / "config.json").open("w", encoding="utf-8") as f:
@@ -242,6 +288,51 @@ def replay_size(model: Optional[DQN]) -> Optional[int]:
     return model.replay_buffer.size()
 
 
+class SelfPlayCheckpointCallback(BaseCallback):
+    """Save synchronized Ego and Partner models without altering training."""
+
+    def __init__(
+        self,
+        partner_model: DQN,
+        output_dir: Path,
+        checkpoint_freq: int,
+    ) -> None:
+        super().__init__(verbose=1)
+        self.partner_model = partner_model
+        self.output_dir = output_dir
+        self.checkpoint_freq = checkpoint_freq
+
+    def _on_step(self) -> bool:
+        if self.num_timesteps % self.checkpoint_freq != 0:
+            return True
+
+        checkpoint_dir = (
+            self.output_dir / "checkpoints" / f"step_{self.num_timesteps:07d}"
+        )
+        checkpoint_dir.mkdir(parents=True, exist_ok=False)
+        self.model.save(checkpoint_dir / "ego_model")
+        self.partner_model.save(checkpoint_dir / "partner_model")
+        with (checkpoint_dir / "checkpoint.json").open(
+            "w", encoding="utf-8"
+        ) as f:
+            json.dump(
+                {
+                    "ego_timesteps": self.model.num_timesteps,
+                    "partner_timesteps": self.partner_model.num_timesteps,
+                    "ego_exploration_rate": float(self.model.exploration_rate),
+                    "partner_exploration_rate": float(
+                        self.partner_model.exploration_rate
+                    ),
+                },
+                f,
+                indent=2,
+                sort_keys=True,
+            )
+            f.write("\n")
+        print(f"Saved synchronized checkpoint: {checkpoint_dir}", flush=True)
+        return True
+
+
 def main() -> None:
     args = parse_args()
     validate_args(args)
@@ -266,7 +357,13 @@ def main() -> None:
     ego_model = None
     partner_model = None
     try:
-        env = gym.make("OvercookedMultiEnv-v0", layout_name=args.layout)
+        env = gym.make(
+            "OvercookedMultiEnv-v0",
+            layout_name=args.layout,
+            custom_dense_reward=args.custom_dense_reward,
+            custom_shaping_gamma=args.custom_shaping_gamma,
+            custom_shaping_scale=args.custom_shaping_scale,
+        )
         partner_model = DQN(
             "MlpPolicy",
             env.getDummyEnv(1),
@@ -289,7 +386,13 @@ def main() -> None:
             tensorboard_log=str(working_dir / "logs" / "ego"),
             **model_kwargs,
         )
-        ego_model.learn(total_timesteps=args.timesteps)
+        callback = None
+        if args.checkpoint_freq:
+            (working_dir / "checkpoints").mkdir()
+            callback = SelfPlayCheckpointCallback(
+                partner_model, working_dir, args.checkpoint_freq
+            )
+        ego_model.learn(total_timesteps=args.timesteps, callback=callback)
         partner_agent.finish_training(env.get_player_observation(1))
 
         actual_ego_timesteps = ego_model.num_timesteps

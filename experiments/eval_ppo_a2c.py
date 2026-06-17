@@ -23,6 +23,17 @@ from overcookedgym.overcooked_utils import LAYOUT_LIST
 import overcookedgym  # noqa: F401  Registers OvercookedMultiEnv-v0.
 
 
+if sys.version_info < (3, 8):
+    try:
+        import pickle5
+
+        import cloudpickle
+
+        cloudpickle.loads = pickle5.loads
+    except ImportError:
+        pass
+
+
 ALGOS: Dict[str, Type[BaseAlgorithm]] = {
     "ppo": PPO,
     "a2c": A2C,
@@ -69,11 +80,17 @@ def run_episode(model: BaseAlgorithm, env: gym.Env) -> Dict[str, float]:
         episode_return += float(reward)
     base_env = env.unwrapped.base_env
     sparse_return = float(base_env.cumulative_sparse_rewards)
-    shaped_return = float(base_env.cumulative_shaped_rewards)
+    built_in_shaped_return = float(base_env.cumulative_shaped_rewards)
+    custom_shaped_return = float(
+        env.unwrapped.cumulative_custom_shaped_rewards
+    )
+    shaped_return = built_in_shaped_return + custom_shaped_return
     delivery_reward = float(env.unwrapped.mdp.delivery_reward)
     return {
         "total_return": episode_return,
         "sparse_return": sparse_return,
+        "built_in_shaped_return": built_in_shaped_return,
+        "custom_shaped_return": custom_shaped_return,
         "shaped_return": shaped_return,
         "deliveries": sparse_return / delivery_reward,
     }
@@ -106,6 +123,23 @@ def load_and_validate_config(args: argparse.Namespace) -> Dict[str, Any]:
     return config
 
 
+def load_model(
+    algo_cls: Type[BaseAlgorithm],
+    path: Path,
+    env: gym.Env,
+    device: str,
+) -> BaseAlgorithm:
+    return algo_cls.load(
+        path,
+        env=env,
+        device=device,
+        custom_objects={
+            "observation_space": env.observation_space,
+            "action_space": env.action_space,
+        },
+    )
+
+
 def main() -> None:
     args = parse_args()
     if args.episodes <= 0:
@@ -115,22 +149,32 @@ def main() -> None:
     algo_cls = ALGOS[args.algo]
     output = args.output or (args.run_dir / "evaluation.json")
 
-    env = gym.make("OvercookedMultiEnv-v0", layout_name=args.layout)
+    env = gym.make(
+        "OvercookedMultiEnv-v0",
+        layout_name=args.layout,
+        **config.get("env_kwargs", {}),
+    )
     try:
         partner_env = env.getDummyEnv(1)
-        partner_model = algo_cls.load(
-            args.run_dir / "partner_model", env=partner_env, device=args.device)
+        partner_model = load_model(
+            algo_cls, args.run_dir / "partner_model", partner_env, args.device
+        )
         env.add_partner_agent(
             StaticModelAgent(partner_model, deterministic=True)
         )
-        ego_model = algo_cls.load(
-            args.run_dir / "ego_model", env=env, device=args.device)
+        ego_model = load_model(algo_cls, args.run_dir / "ego_model", env, args.device)
         episodes = [run_episode(ego_model, env) for _ in range(args.episodes)]
     finally:
         env.close()
 
     returns = [episode["total_return"] for episode in episodes]
     sparse_returns = [episode["sparse_return"] for episode in episodes]
+    built_in_shaped_returns = [
+        episode["built_in_shaped_return"] for episode in episodes
+    ]
+    custom_shaped_returns = [
+        episode["custom_shaped_return"] for episode in episodes
+    ]
     shaped_returns = [episode["shaped_return"] for episode in episodes]
     deliveries = [episode["deliveries"] for episode in episodes]
     results = {
@@ -141,6 +185,7 @@ def main() -> None:
         "partner_seed": config.get("partner_seed"),
         "run_dir": str(args.run_dir),
         "training_model_kwargs": config.get("model_kwargs"),
+        "training_env_kwargs": config.get("env_kwargs", {}),
         "training_effective_hyperparameters": config.get(
             "effective_hyperparameters"),
         "training_requested_timesteps": config.get(
@@ -155,6 +200,8 @@ def main() -> None:
         "device": str(ego_model.device),
         "episode_returns": returns,
         "episode_sparse_returns": sparse_returns,
+        "episode_built_in_shaped_returns": built_in_shaped_returns,
+        "episode_custom_shaped_returns": custom_shaped_returns,
         "episode_shaped_returns": shaped_returns,
         "episode_deliveries": deliveries,
         "mean_return": mean(returns),
@@ -163,6 +210,8 @@ def main() -> None:
         "min_return": min(returns),
         "max_return": max(returns),
         "mean_sparse_return": mean(sparse_returns),
+        "mean_built_in_shaped_return": mean(built_in_shaped_returns),
+        "mean_custom_shaped_return": mean(custom_shaped_returns),
         "mean_shaped_return": mean(shaped_returns),
         "mean_deliveries": mean(deliveries),
     }
@@ -180,6 +229,8 @@ def main() -> None:
                 "episode",
                 "total_return",
                 "sparse_return",
+                "built_in_shaped_return",
+                "custom_shaped_return",
                 "shaped_return",
                 "deliveries",
             ]
@@ -190,6 +241,8 @@ def main() -> None:
                     episode_index,
                     episode["total_return"],
                     episode["sparse_return"],
+                    episode["built_in_shaped_return"],
+                    episode["custom_shaped_return"],
                     episode["shaped_return"],
                     episode["deliveries"],
                 ]

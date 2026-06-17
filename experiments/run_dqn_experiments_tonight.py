@@ -1,6 +1,4 @@
-"""
-Run tonight's 5-layout x 3-seed x 3-exploration-fraction DQN matrix.
-"""
+"""Run the fair-comparison 5-layout x 3-seed DQN matrix."""
 
 import argparse
 import json
@@ -15,12 +13,14 @@ from train_dqn_selfplay import get_run_dir, make_run_name
 
 LAYOUTS = ["simple", "unident_s", "random1", "random0", "random3"]
 SEEDS = [0, 1, 2]
-EXPLORATION_FRACTIONS = [0.1, 0.3, 0.5]
+EXPLORATION_FRACTION = 0.1
+CUSTOM_SHAPING_GAMMA = 0.99
+CUSTOM_SHAPING_SCALE = 0.4
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run the complete 45-run DQN experiment matrix on CPU."
+        description="Run the fair-comparison 15-run DQN matrix on CPU."
     )
     parser.add_argument("--output-dir", type=Path, default=Path("results/selfplay"))
     parser.add_argument("--timesteps", type=int, default=500_000)
@@ -90,7 +90,7 @@ def run_command(command: List[str], dry_run: bool) -> None:
 def run_matrix(args: argparse.Namespace) -> int:
     script_dir = Path(__file__).resolve().parent
     train_script = script_dir / "train_dqn_selfplay.py"
-    evaluate_script = script_dir / "evaluate_selfplay.py"
+    evaluate_script = script_dir / "eval_ppo_a2c.py"
     status_name = (
         "dqn_smoke_status.json" if args.smoke_test
         else "dqn_batch_status.json"
@@ -103,10 +103,9 @@ def run_matrix(args: argparse.Namespace) -> int:
         timesteps = 1_000
     else:
         matrix = [
-            (layout, seed, fraction)
+            (layout, seed, EXPLORATION_FRACTION)
             for layout in LAYOUTS
             for seed in SEEDS
-            for fraction in EXPLORATION_FRACTIONS
         ]
         timesteps = args.timesteps
 
@@ -120,6 +119,9 @@ def run_matrix(args: argparse.Namespace) -> int:
             partner_seed_offset=args.partner_seed_offset,
             timesteps=timesteps,
             exploration_fraction=fraction,
+            custom_dense_reward=True,
+            custom_shaping_gamma=CUSTOM_SHAPING_GAMMA,
+            custom_shaping_scale=CUSTOM_SHAPING_SCALE,
             **{name: None for name in (
                 "learning_rate",
                 "buffer_size",
@@ -136,6 +138,9 @@ def run_matrix(args: argparse.Namespace) -> int:
             "layout": layout,
             "seed": seed,
             "exploration_fraction": fraction,
+            "custom_dense_reward": True,
+            "custom_shaping_gamma": CUSTOM_SHAPING_GAMMA,
+            "custom_shaping_scale": CUSTOM_SHAPING_SCALE,
             "timesteps": timesteps,
             "run_name": make_run_name(run_args),
             "run_dir": str(run_dir),
@@ -162,6 +167,9 @@ def run_matrix(args: argparse.Namespace) -> int:
                     "--partner-seed-offset", str(args.partner_seed_offset),
                     "--timesteps", str(timesteps),
                     "--exploration-fraction", str(fraction),
+                    "--custom-dense-reward",
+                    "--custom-shaping-gamma", str(CUSTOM_SHAPING_GAMMA),
+                    "--custom-shaping-scale", str(CUSTOM_SHAPING_SCALE),
                     "--output-dir", str(args.output_dir),
                     "--device", "cpu",
                     "--verbose", str(args.verbose),

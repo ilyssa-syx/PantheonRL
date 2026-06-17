@@ -1,13 +1,18 @@
-# PPO/A2C/DQN Independent Self-Play Experiments
+# PPO/A2C/DQN/Discrete SAC Independent Self-Play Experiments
 
 This folder contains the first unified Overcooked self-play entrypoints for
 the current experiment plan:
 
 - `train_selfplay.py`: trains PPO or A2C ego and partner models together.
 - `train_dqn_selfplay.py`: trains one DQN ego/partner experiment.
-- `evaluate_selfplay.py`: evaluates frozen ego/partner models with
+- `train_discrete_sac_selfplay.py`: trains one Discrete SAC ego/partner
+  experiment.
+- `eval_discrete_sac.py`: evaluates a completed Discrete SAC run.
+- `run_discrete_sac_experiments.py`: runs the fair-comparison Discrete SAC
+  matrix.
+- `eval_ppo_a2c.py`: evaluates frozen ego/partner models with
   `model.predict(obs, deterministic=True)`.
-- `run_dqn_experiments_tonight.py`: runs the complete 45-run DQN matrix and
+- `run_dqn_experiments_tonight.py`: runs the fair-comparison 15-run DQN matrix and
   evaluates every completed run.
 - `train_dqn_alternating.py`: alternates training one DQN while freezing the
   other DQN.
@@ -92,7 +97,7 @@ Omit `--ent-coef` to use the Stable-Baselines3 default.
 ## Deterministic Evaluation
 
 ```bash
-python experiments/evaluate_selfplay.py \
+python experiments/eval_ppo_a2c.py \
   --algo ppo \
   --layout simple \
   --run-dir \
@@ -104,7 +109,8 @@ python experiments/evaluate_selfplay.py \
 This writes `evaluation.json` and `evaluation.csv` in the run directory.
 Evaluation refuses to run when `--algo` or `--layout` does not match the
 completed run's `config.json`. The outputs include total return, sparse return,
-shaped return, and number of soup deliveries for every episode.
+PantheonRL's built-in shaped return, custom progress-score shaped return, their
+combined shaped return, and number of soup deliveries for every episode.
 
 ## DQN Training
 
@@ -116,6 +122,9 @@ python experiments/train_dqn_selfplay.py \
   --seed 0 \
   --timesteps 500000 \
   --exploration-fraction 0.1 \
+  --custom-dense-reward \
+  --custom-shaping-gamma 0.99 \
+  --custom-shaping-scale 0.4 \
   --device cpu \
   --output-dir results/selfplay
 ```
@@ -124,22 +133,57 @@ The Partner uses `OffPolicyAgent`. Its replay-buffer insertion, target-network
 updates, epsilon schedule, `learning_starts`, and final pending transition are
 kept in sync with the Ego DQN lifecycle.
 
+`--custom-dense-reward` enables the HARL progress-score potential and adds its
+potential-based shaping reward to PantheonRL's existing milestone shaping. To
+preserve the potential-based shaping guarantee, `--custom-shaping-gamma` must
+equal the DQN discount factor. The progress score is global privileged state
+used only to calculate reward; it is not added to either agent's observation.
+
 Completed runs use configuration-specific directories such as:
 
 ```text
-results/selfplay/dqn/simple/seed_0/steps_500000__partner_offset_1000__exploration_fraction_0.1/
+results/selfplay/dqn/simple/seed_0/steps_500000__partner_offset_1000__exploration_fraction_0.1__progress_score__shaping_gamma_0.99__shaping_scale_0.4/
 ```
+
+## Discrete SAC Training
+
+The Discrete SAC implementation uses a categorical Actor, twin Q-networks,
+target Q-networks, replay buffers, and automatic entropy-temperature tuning:
+
+```bash
+python experiments/train_discrete_sac_selfplay.py \
+  --layout simple \
+  --seed 0 \
+  --timesteps 500000 \
+  --custom-dense-reward \
+  --device cpu \
+  --output-dir results/selfplay
+```
+
+Run the end-to-end smoke test before starting the fair-comparison matrix:
+
+```bash
+python experiments/run_discrete_sac_experiments.py \
+  --smoke-test \
+  --output-dir results/discrete_sac_smoke
+```
+
+The smoke test lowers `learning_starts` so that both Ego and Partner perform
+real gradient updates within 1,000 environment steps.
 
 ## Tonight's DQN Matrix
 
-The batch launcher runs these combinations sequentially on CPU:
+The batch launcher runs the fair-comparison combinations sequentially on CPU:
 
 ```text
-5 layouts x 3 seeds x 3 exploration_fraction values = 45 runs
+5 layouts x 3 seeds x 1 exploration_fraction value = 15 runs
 
 layouts: simple, unident_s, random1, random0, random3
 seeds: 0, 1, 2
-exploration_fraction: 0.1, 0.3, 0.5
+exploration_fraction: 0.1
+progress score: enabled
+custom shaping gamma: 0.99
+custom shaping scale: 0.4
 ```
 
 Every completed training run is followed by 100 deterministic evaluation

@@ -14,6 +14,7 @@ and config recording for reproducible PPO/A2C experiments.
 
 import argparse
 import json
+import math
 from pathlib import Path
 import sys
 from typing import Any, Dict, Optional, Tuple, Type
@@ -114,6 +115,16 @@ def parse_args() -> argparse.Namespace:
         choices=[0, 1, 2],
         help="Stable-Baselines3 verbosity.",
     )
+    parser.add_argument(
+        "--custom-dense-reward",
+        action="store_true",
+        help="Enable potential-based progress-score shaping.",
+    )
+    parser.add_argument("--custom-shaping-gamma", type=float, default=0.99)
+    parser.add_argument("--custom-shaping-scale", type=float, default=0.4)
+    parser.add_argument(
+        "--progress-weight", type=float, default=None, help=argparse.SUPPRESS
+    )
     return parser.parse_args()
 
 
@@ -138,6 +149,15 @@ def validate_args(args: argparse.Namespace) -> None:
         raise ValueError("--timesteps must be positive")
     if args.n_steps is not None and args.n_steps <= 0:
         raise ValueError("--n-steps must be positive")
+    if args.custom_shaping_scale < 0:
+        raise ValueError("--custom-shaping-scale must be non-negative")
+    algo_gamma = 0.99 if args.gamma is None else args.gamma
+    if args.custom_dense_reward and not math.isclose(
+        args.custom_shaping_gamma, algo_gamma
+    ):
+        raise ValueError(
+            "--custom-shaping-gamma must match the PPO/A2C discount factor"
+        )
 
 
 def make_run_name(args: argparse.Namespace) -> str:
@@ -149,7 +169,23 @@ def make_run_name(args: argparse.Namespace) -> str:
         value = getattr(args, name)
         if value is not None:
             parts.append(f"{name}_{value}")
+    if args.custom_dense_reward:
+        parts.extend(
+            [
+                "custom_dense",
+                f"sg_{args.custom_shaping_gamma}",
+                f"ss_{args.custom_shaping_scale}",
+            ]
+        )
     return "__".join(parts)
+
+
+def build_env_kwargs(args: argparse.Namespace) -> Dict[str, Any]:
+    return {
+        "custom_dense_reward": args.custom_dense_reward,
+        "custom_shaping_gamma": args.custom_shaping_gamma,
+        "custom_shaping_scale": args.custom_shaping_scale,
+    }
 
 
 def prepare_run_dirs(args: argparse.Namespace) -> Tuple[Path, Path]:
@@ -181,6 +217,7 @@ def save_config(
     args: argparse.Namespace,
     partner_seed: int,
     model_kwargs: Dict[str, Any],
+    env_kwargs: Dict[str, Any],
     actual_ego_timesteps: Optional[int] = None,
     actual_partner_timesteps: Optional[int] = None,
 ) -> None:
@@ -198,6 +235,7 @@ def save_config(
         "partner_wrapper": "OnPolicyAgent",
         "self_play_type": "independent_self_play",
         "model_kwargs": model_kwargs,
+        "env_kwargs": env_kwargs,
         "output_dir": str(final_run_dir),
         "saved_files": {
             "ego_model": "ego_model.zip",
@@ -242,6 +280,7 @@ def main() -> None:
     partner_seed = args.seed + args.partner_seed_offset
     run_dir, working_dir = prepare_run_dirs(args)
     model_kwargs = build_model_kwargs(args)
+    env_kwargs = build_env_kwargs(args)
 
     set_random_seed(args.seed)
 
@@ -250,14 +289,18 @@ def main() -> None:
     print(f"Completed run directory: {run_dir}")
 
     save_config(
-        working_dir, run_dir, args, partner_seed, model_kwargs)
+        working_dir, run_dir, args, partner_seed, model_kwargs, env_kwargs)
     save_training_status(working_dir, args, "running")
 
     env = None
     ego_model = None
     partner_model = None
     try:
-        env = gym.make("OvercookedMultiEnv-v0", layout_name=args.layout)
+        env = gym.make(
+            "OvercookedMultiEnv-v0",
+            layout_name=args.layout,
+            **env_kwargs,
+        )
         partner_env = env.getDummyEnv(1)
 
         partner_model = algo_cls(
@@ -301,6 +344,7 @@ def main() -> None:
             args,
             partner_seed,
             model_kwargs,
+            env_kwargs,
             actual_ego_timesteps,
             actual_partner_timesteps,
         )
