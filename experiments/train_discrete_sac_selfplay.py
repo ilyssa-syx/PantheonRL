@@ -71,7 +71,7 @@ def parse_args() -> argparse.Namespace:
         help="Enable potential-based progress-score shaping.",
     )
     parser.add_argument("--custom-shaping-gamma", type=float, default=0.99)
-    parser.add_argument("--custom-shaping-scale", type=float, default=0.4)
+    parser.add_argument("--custom-shaping-scale", type=float, default=1.2)
     parser.add_argument(
         "--progress-weight", type=float, default=None, help=argparse.SUPPRESS
     )

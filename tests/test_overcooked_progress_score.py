@@ -13,7 +13,7 @@ class OvercookedProgressScoreTest(unittest.TestCase):
             "simple",
             custom_dense_reward=custom_dense_reward,
             custom_shaping_gamma=0.99,
-            custom_shaping_scale=0.4,
+            custom_shaping_scale=1.2,
         )
 
     def state_with(self, env, held=None, counter=None, pot=None):
@@ -61,23 +61,59 @@ class OvercookedProgressScoreTest(unittest.TestCase):
             with self.subTest(expected_score=expected_score):
                 self.assertEqual(env._get_progress_score(state), expected_score)
 
+    def test_throughput_potential_rewards_late_stage_progress(self):
+        env = self.make_env(custom_dense_reward=True)
+        cooking_time = env.mdp.soup_cooking_time
+        pot_pos = env.mdp.get_pot_locations()[0]
+        held_soup_state = self.state_with(env, held="soup")
+        held_soup_distance = env._nearest_distance(
+            held_soup_state.players[0].position,
+            env.mdp.get_serving_locations(),
+        )
+
+        self.assertAlmostEqual(env._potential(self.state_with(env, pot=(1, 0))), 0.3)
+        self.assertAlmostEqual(env._potential(self.state_with(env, pot=(2, 0))), 0.6)
+        self.assertAlmostEqual(env._potential(self.state_with(env, pot=(3, 1))), 1.0)
+        self.assertAlmostEqual(
+            env._potential(self.state_with(env, pot=(3, cooking_time))),
+            1.2,
+        )
+        self.assertAlmostEqual(
+            env._potential(
+                self.state_with(env, held="dish", pot=(3, cooking_time))
+            ),
+            1.5,
+        )
+        self.assertAlmostEqual(
+            env._potential(held_soup_state),
+            2.0 - 0.05 * held_soup_distance,
+        )
+
+        env.ready_soup_ages = {pot_pos: 10}
+        self.assertAlmostEqual(
+            env._potential(
+                self.state_with(env, held="dish", pot=(3, cooking_time))
+            ),
+            1.5 - 0.25,
+        )
+
     def test_custom_shaping_uses_potential_based_reward(self):
         env = self.make_env(custom_dense_reward=True)
         prev_state = self.state_with(env, held="onion")
         next_state = self.state_with(env, pot=(1, 0))
-        prev_phi = 1.0
-        next_phi = 2.0
+        prev_phi = 0.0
+        next_phi = 0.3
         self.assertAlmostEqual(
             env._calculate_custom_shaping(prev_state, next_state, False),
-            0.4 * (0.99 * next_phi - prev_phi),
+            1.2 * (0.99 * next_phi - prev_phi),
         )
         self.assertAlmostEqual(
             env._calculate_custom_shaping(prev_state, next_state, True),
-            0.4 * (0.99 * next_phi - prev_phi),
+            1.2 * (0.99 * next_phi - prev_phi),
         )
         self.assertAlmostEqual(
             env._calculate_custom_shaping(next_state, prev_state, False),
-            0.4 * (0.99 * prev_phi - next_phi),
+            1.2 * (0.99 * prev_phi - next_phi),
         )
 
     def test_custom_shaping_is_disabled_by_default(self):

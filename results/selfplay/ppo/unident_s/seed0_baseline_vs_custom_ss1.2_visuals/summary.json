@@ -1,0 +1,282 @@
+[
+  {
+    "label": "baseline_seed0",
+    "run_dir": "/workspace/PantheonRL/results/selfplay/ppo/unident_s/seed_0/steps_500000__partner_offset_1000",
+    "frames_dir": "/workspace/PantheonRL/results/selfplay/ppo/unident_s/seed0_baseline_vs_custom_ss1.2_visuals/baseline_seed0_frames",
+    "gif": "/workspace/PantheonRL/results/selfplay/ppo/unident_s/seed0_baseline_vs_custom_ss1.2_visuals/baseline_seed0.gif",
+    "trace": "/workspace/PantheonRL/results/selfplay/ppo/unident_s/seed0_baseline_vs_custom_ss1.2_visuals/baseline_seed0_trace.csv",
+    "total_return": 490.0,
+    "sparse_return": 260.0,
+    "deliveries": 13.0,
+    "delivery_steps": [
+      35,
+      65,
+      95,
+      125,
+      155,
+      185,
+      215,
+      245,
+      275,
+      305,
+      335,
+      365,
+      395
+    ],
+    "delivery_intervals": [
+      35,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30
+    ],
+    "mean_interval": 30.384615384615383,
+    "last_delivery_step": 395,
+    "ego_action_counts": [
+      [
+        "interact",
+        316
+      ],
+      [
+        "(-1, 0)",
+        42
+      ],
+      [
+        "(0, -1)",
+        42
+      ]
+    ],
+    "partner_action_counts": [
+      [
+        "(0, 0)",
+        235
+      ],
+      [
+        "interact",
+        66
+      ],
+      [
+        "(0, -1)",
+        42
+      ],
+      [
+        "(1, 0)",
+        29
+      ],
+      [
+        "(0, 1)",
+        28
+      ]
+    ],
+    "late_ego_action_counts": [
+      [
+        "interact",
+        64
+      ],
+      [
+        "(-1, 0)",
+        8
+      ],
+      [
+        "(0, -1)",
+        8
+      ]
+    ],
+    "late_partner_action_counts": [
+      [
+        "(0, 0)",
+        48
+      ],
+      [
+        "interact",
+        13
+      ],
+      [
+        "(0, -1)",
+        8
+      ],
+      [
+        "(0, 1)",
+        6
+      ],
+      [
+        "(1, 0)",
+        5
+      ]
+    ],
+    "final_p0": "(5, 2) held=",
+    "final_p1": "(3, 2) held=dish",
+    "final_pots": "(4, 2):soup('onion', 2, 0);(4, 3):empty",
+    "final_objects": "(4, 2):soup('onion', 2, 0)"
+  },
+  {
+    "label": "custom_ss1.2_seed0",
+    "run_dir": "/workspace/PantheonRL/results/selfplay/ppo/unident_s/seed_0/steps_500000__partner_offset_1000__custom_dense__sg_0.99__ss_1.2",
+    "frames_dir": "/workspace/PantheonRL/results/selfplay/ppo/unident_s/seed0_baseline_vs_custom_ss1.2_visuals/custom_ss1.2_seed0_frames",
+    "gif": "/workspace/PantheonRL/results/selfplay/ppo/unident_s/seed0_baseline_vs_custom_ss1.2_visuals/custom_ss1.2_seed0.gif",
+    "trace": "/workspace/PantheonRL/results/selfplay/ppo/unident_s/seed0_baseline_vs_custom_ss1.2_visuals/custom_ss1.2_seed0_trace.csv",
+    "total_return": 872.190400000003,
+    "sparse_return": 460.0,
+    "deliveries": 23.0,
+    "delivery_steps": [
+      36,
+      50,
+      66,
+      82,
+      98,
+      114,
+      130,
+      146,
+      162,
+      178,
+      194,
+      210,
+      226,
+      242,
+      258,
+      274,
+      290,
+      306,
+      322,
+      338,
+      354,
+      370,
+      386
+    ],
+    "delivery_intervals": [
+      36,
+      14,
+      16,
+      16,
+      16,
+      16,
+      16,
+      16,
+      16,
+      16,
+      16,
+      16,
+      16,
+      16,
+      16,
+      16,
+      16,
+      16,
+      16,
+      16,
+      16,
+      16,
+      16
+    ],
+    "mean_interval": 16.782608695652176,
+    "last_delivery_step": 386,
+    "ego_action_counts": [
+      [
+        "interact",
+        151
+      ],
+      [
+        "(-1, 0)",
+        88
+      ],
+      [
+        "(0, -1)",
+        88
+      ],
+      [
+        "(0, 1)",
+        49
+      ],
+      [
+        "(0, 0)",
+        24
+      ]
+    ],
+    "partner_action_counts": [
+      [
+        "interact",
+        125
+      ],
+      [
+        "(0, 1)",
+        119
+      ],
+      [
+        "(1, 0)",
+        51
+      ],
+      [
+        "(0, -1)",
+        49
+      ],
+      [
+        "(0, 0)",
+        31
+      ],
+      [
+        "(-1, 0)",
+        25
+      ]
+    ],
+    "late_ego_action_counts": [
+      [
+        "interact",
+        30
+      ],
+      [
+        "(-1, 0)",
+        18
+      ],
+      [
+        "(0, -1)",
+        18
+      ],
+      [
+        "(0, 1)",
+        9
+      ],
+      [
+        "(0, 0)",
+        5
+      ]
+    ],
+    "late_partner_action_counts": [
+      [
+        "(0, 1)",
+        28
+      ],
+      [
+        "interact",
+        24
+      ],
+      [
+        "(0, -1)",
+        9
+      ],
+      [
+        "(1, 0)",
+        9
+      ],
+      [
+        "(0, 0)",
+        6
+      ],
+      [
+        "(-1, 0)",
+        4
+      ]
+    ],
+    "final_p0": "(5, 3) held=onion",
+    "final_p1": "(3, 3) held=soup('onion', 3, 20)",
+    "final_pots": "(4, 2):soup('onion', 3, 5);(4, 3):empty",
+    "final_objects": "(4, 2):soup('onion', 3, 5)"
+  }
+]

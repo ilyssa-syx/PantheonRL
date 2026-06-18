@@ -124,7 +124,7 @@ python experiments/train_dqn_selfplay.py \
   --exploration-fraction 0.1 \
   --custom-dense-reward \
   --custom-shaping-gamma 0.99 \
-  --custom-shaping-scale 0.4 \
+  --custom-shaping-scale 1.2 \
   --device cpu \
   --output-dir results/selfplay
 ```
@@ -142,7 +142,7 @@ used only to calculate reward; it is not added to either agent's observation.
 Completed runs use configuration-specific directories such as:
 
 ```text
-results/selfplay/dqn/simple/seed_0/steps_500000__partner_offset_1000__exploration_fraction_0.1__progress_score__shaping_gamma_0.99__shaping_scale_0.4/
+results/selfplay/dqn/simple/seed_0/steps_500000__partner_offset_1000__exploration_fraction_0.1__progress_score__shaping_gamma_0.99__shaping_scale_1.2/
 ```
 
 ## Discrete SAC Training
@@ -183,7 +183,7 @@ seeds: 0, 1, 2
 exploration_fraction: 0.1
 progress score: enabled
 custom shaping gamma: 0.99
-custom shaping scale: 0.4
+custom shaping scale: 1.2
 ```
 
 Every completed training run is followed by 100 deterministic evaluation

@@ -5,10 +5,13 @@ Deterministic self-play evaluation for trained PPO/A2C/DQN Overcooked models.
 import argparse
 import csv
 import json
+import os
 from pathlib import Path
 from statistics import mean, median, pstdev
 import sys
 from typing import Any, Dict, Type
+
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:

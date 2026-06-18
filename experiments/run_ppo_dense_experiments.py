@@ -2,11 +2,14 @@
 
 import argparse
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
 import time
 from typing import Any, Dict, List
+
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -19,7 +22,7 @@ from train_ppo_a2c import make_run_name
 DEFAULT_LAYOUTS = ["simple", "unident_s", "random1", "random0", "random3"]
 DEFAULT_SEEDS = [0, 1, 2]
 CUSTOM_SHAPING_GAMMA = 0.99
-CUSTOM_SHAPING_SCALE = 0.4
+CUSTOM_SHAPING_SCALE = 1.2
 
 
 def parse_args() -> argparse.Namespace:
@@ -44,7 +47,7 @@ def parse_args() -> argparse.Namespace:
         "--output-dir", type=Path, default=Path("results/selfplay")
     )
     parser.add_argument("--timesteps", type=int, default=500_000)
-    parser.add_argument("--evaluation-episodes", type=int, default=100)
+    parser.add_argument("--evaluation-episodes", type=int, default=1)
     parser.add_argument("--partner-seed-offset", type=int, default=1000)
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--verbose", type=int, default=0, choices=[0, 1, 2])

@@ -1,0 +1,290 @@
+[
+  {
+    "label": "baseline_seed2_deliveries_1",
+    "trace": "/workspace/PantheonRL/results/selfplay/ppo/simple/failure_cases_deliveries_le_10/baseline_seed2_deliveries_1_trace.csv",
+    "deliveries": 1.0,
+    "total_return": 46.0,
+    "delivery_steps": [
+      40
+    ],
+    "last_delivery_step": 40,
+    "final_pots": "(2, 0):soup('onion', 3, 20)",
+    "final_p0": "(2, 2) held=",
+    "final_p1": "(1, 1) held=",
+    "final_objects": "(1, 0):dish;(2, 0):soup('onion', 3, 20)",
+    "late_ego_actions": [
+      [
+        "interact",
+        80
+      ]
+    ],
+    "late_partner_actions": [
+      [
+        "(1, 0)",
+        40
+      ],
+      [
+        "(-1, 0)",
+        40
+      ]
+    ],
+    "post_last_delivery_ego_actions": [
+      [
+        "interact",
+        350
+      ],
+      [
+        "(0, -1)",
+        6
+      ],
+      [
+        "(0, 1)",
+        3
+      ],
+      [
+        "(-1, 0)",
+        1
+      ]
+    ],
+    "post_last_delivery_partner_actions": [
+      [
+        "(-1, 0)",
+        168
+      ],
+      [
+        "(1, 0)",
+        167
+      ],
+      [
+        "(0, -1)",
+        21
+      ],
+      [
+        "interact",
+        4
+      ]
+    ]
+  },
+  {
+    "label": "custom_ss1.2_seed0_deliveries_10",
+    "trace": "/workspace/PantheonRL/results/selfplay/ppo/simple/failure_cases_deliveries_le_10/custom_ss1.2_seed0_deliveries_10_trace.csv",
+    "deliveries": 10.0,
+    "total_return": 348.75999999999965,
+    "delivery_steps": [
+      42,
+      79,
+      116,
+      153,
+      190,
+      227,
+      264,
+      301,
+      338,
+      375
+    ],
+    "last_delivery_step": 375,
+    "final_pots": "(2, 0):soup('onion', 3, 15)",
+    "final_p0": "(2, 1) held=onion",
+    "final_p1": "(1, 1) held=dish",
+    "final_objects": "(1, 0):dish;(2, 0):soup('onion', 3, 15)",
+    "late_ego_actions": [
+      [
+        "(0, -1)",
+        42
+      ],
+      [
+        "interact",
+        14
+      ],
+      [
+        "(1, 0)",
+        12
+      ],
+      [
+        "(-1, 0)",
+        10
+      ],
+      [
+        "(0, 1)",
+        2
+      ]
+    ],
+    "late_partner_actions": [
+      [
+        "(0, -1)",
+        38
+      ],
+      [
+        "interact",
+        12
+      ],
+      [
+        "(0, 1)",
+        12
+      ],
+      [
+        "(1, 0)",
+        6
+      ],
+      [
+        "(-1, 0)",
+        6
+      ],
+      [
+        "(0, 0)",
+        6
+      ]
+    ],
+    "post_last_delivery_ego_actions": [
+      [
+        "(0, -1)",
+        11
+      ],
+      [
+        "interact",
+        6
+      ],
+      [
+        "(1, 0)",
+        4
+      ],
+      [
+        "(-1, 0)",
+        4
+      ]
+    ],
+    "post_last_delivery_partner_actions": [
+      [
+        "(0, -1)",
+        10
+      ],
+      [
+        "(0, 1)",
+        5
+      ],
+      [
+        "interact",
+        4
+      ],
+      [
+        "(-1, 0)",
+        3
+      ],
+      [
+        "(0, 0)",
+        3
+      ]
+    ]
+  },
+  {
+    "label": "custom_ss0.2_pw2_seed1_deliveries_10",
+    "trace": "/workspace/PantheonRL/results/selfplay/ppo/simple/failure_cases_deliveries_le_10/custom_ss0.2_pw2_seed1_deliveries_10_trace.csv",
+    "deliveries": 10.0,
+    "total_return": 386.6032999999991,
+    "delivery_steps": [
+      43,
+      79,
+      115,
+      151,
+      187,
+      223,
+      259,
+      295,
+      331,
+      367
+    ],
+    "last_delivery_step": 367,
+    "final_pots": "(2, 0):empty",
+    "final_p0": "(1, 1) held=onion",
+    "final_p1": "(2, 1) held=soup('onion', 3, 20)",
+    "final_objects": "",
+    "late_ego_actions": [
+      [
+        "interact",
+        55
+      ],
+      [
+        "(-1, 0)",
+        7
+      ],
+      [
+        "(0, 0)",
+        6
+      ],
+      [
+        "(1, 0)",
+        6
+      ],
+      [
+        "(0, -1)",
+        6
+      ]
+    ],
+    "late_partner_actions": [
+      [
+        "interact",
+        56
+      ],
+      [
+        "(0, 1)",
+        10
+      ],
+      [
+        "(1, 0)",
+        5
+      ],
+      [
+        "(0, -1)",
+        5
+      ],
+      [
+        "(-1, 0)",
+        4
+      ]
+    ],
+    "post_last_delivery_ego_actions": [
+      [
+        "interact",
+        24
+      ],
+      [
+        "(-1, 0)",
+        3
+      ],
+      [
+        "(1, 0)",
+        2
+      ],
+      [
+        "(0, -1)",
+        2
+      ],
+      [
+        "(0, 0)",
+        2
+      ]
+    ],
+    "post_last_delivery_partner_actions": [
+      [
+        "interact",
+        24
+      ],
+      [
+        "(0, 1)",
+        4
+      ],
+      [
+        "(-1, 0)",
+        2
+      ],
+      [
+        "(0, -1)",
+        2
+      ],
+      [
+        "(1, 0)",
+        1
+      ]
+    ]
+  }
+]

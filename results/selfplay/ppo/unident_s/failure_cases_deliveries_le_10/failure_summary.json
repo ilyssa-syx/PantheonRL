@@ -1,0 +1,232 @@
+[
+  {
+    "label": "baseline_seed1_deliveries_0",
+    "trace": "/workspace/PantheonRL/results/selfplay/ppo/unident_s/failure_cases_deliveries_le_10/baseline_seed1_deliveries_0_trace.csv",
+    "deliveries": 0.0,
+    "total_return": 9.0,
+    "delivery_steps": [],
+    "last_delivery_step": null,
+    "final_pots": "(4, 2):soup('onion', 3, 20);(4, 3):empty",
+    "final_p0": "(5, 2) held=onion",
+    "final_p1": "(3, 2) held=",
+    "final_objects": "(4, 2):soup('onion', 3, 20)",
+    "late_ego_actions": [
+      [
+        "interact",
+        80
+      ]
+    ],
+    "late_partner_actions": [
+      [
+        "interact",
+        80
+      ]
+    ],
+    "post_last_delivery_ego_actions": [
+      [
+        "interact",
+        391
+      ],
+      [
+        "(-1, 0)",
+        5
+      ],
+      [
+        "(0, -1)",
+        4
+      ]
+    ],
+    "post_last_delivery_partner_actions": [
+      [
+        "interact",
+        395
+      ],
+      [
+        "(0, 0)",
+        2
+      ],
+      [
+        "(1, 0)",
+        2
+      ],
+      [
+        "(0, -1)",
+        1
+      ]
+    ]
+  },
+  {
+    "label": "baseline_seed2_deliveries_0",
+    "trace": "/workspace/PantheonRL/results/selfplay/ppo/unident_s/failure_cases_deliveries_le_10/baseline_seed2_deliveries_0_trace.csv",
+    "deliveries": 0.0,
+    "total_return": 12.0,
+    "delivery_steps": [],
+    "last_delivery_step": null,
+    "final_pots": "(4, 2):soup('onion', 3, 20);(4, 3):empty",
+    "final_p0": "(5, 2) held=onion",
+    "final_p1": "(3, 2) held=dish",
+    "final_objects": "(4, 2):soup('onion', 3, 20)",
+    "late_ego_actions": [
+      [
+        "interact",
+        80
+      ]
+    ],
+    "late_partner_actions": [
+      [
+        "interact",
+        80
+      ]
+    ],
+    "post_last_delivery_ego_actions": [
+      [
+        "interact",
+        391
+      ],
+      [
+        "(-1, 0)",
+        5
+      ],
+      [
+        "(0, -1)",
+        4
+      ]
+    ],
+    "post_last_delivery_partner_actions": [
+      [
+        "interact",
+        392
+      ],
+      [
+        "(1, 0)",
+        3
+      ],
+      [
+        "(0, 0)",
+        2
+      ],
+      [
+        "(0, -1)",
+        2
+      ],
+      [
+        "(0, 1)",
+        1
+      ]
+    ]
+  },
+  {
+    "label": "custom_ss0.2_pw2_seed0_deliveries_1",
+    "trace": "/workspace/PantheonRL/results/selfplay/ppo/unident_s/failure_cases_deliveries_le_10/custom_ss0.2_pw2_seed0_deliveries_1_trace.csv",
+    "deliveries": 1.0,
+    "total_return": 54.08019999999996,
+    "delivery_steps": [
+      35
+    ],
+    "last_delivery_step": 35,
+    "final_pots": "(4, 2):soup('onion', 3, 20);(4, 3):soup('onion', 3, 20)",
+    "final_p0": "(5, 3) held=onion",
+    "final_p1": "(3, 3) held=dish",
+    "final_objects": "(4, 2):soup('onion', 3, 20);(4, 3):soup('onion', 3, 20)",
+    "late_ego_actions": [
+      [
+        "(-1, 0)",
+        80
+      ]
+    ],
+    "late_partner_actions": [
+      [
+        "interact",
+        80
+      ]
+    ],
+    "post_last_delivery_ego_actions": [
+      [
+        "(-1, 0)",
+        341
+      ],
+      [
+        "interact",
+        20
+      ],
+      [
+        "(0, -1)",
+        3
+      ],
+      [
+        "(0, 1)",
+        1
+      ]
+    ],
+    "post_last_delivery_partner_actions": [
+      [
+        "interact",
+        356
+      ],
+      [
+        "(0, 0)",
+        5
+      ],
+      [
+        "(0, 1)",
+        2
+      ],
+      [
+        "(0, -1)",
+        1
+      ],
+      [
+        "(1, 0)",
+        1
+      ]
+    ]
+  },
+  {
+    "label": "custom_ss1.2_seed2_deliveries_0",
+    "trace": "/workspace/PantheonRL/results/selfplay/ppo/unident_s/failure_cases_deliveries_le_10/custom_ss1.2_seed2_deliveries_0_trace.csv",
+    "deliveries": 0.0,
+    "total_return": 6.709200000000109,
+    "delivery_steps": [],
+    "last_delivery_step": null,
+    "final_pots": "(4, 2):soup('onion', 3, 20);(4, 3):empty",
+    "final_p0": "(5, 2) held=onion",
+    "final_p1": "(2, 3) held=",
+    "final_objects": "(4, 2):soup('onion', 3, 20)",
+    "late_ego_actions": [
+      [
+        "(-1, 0)",
+        80
+      ]
+    ],
+    "late_partner_actions": [
+      [
+        "interact",
+        80
+      ]
+    ],
+    "post_last_delivery_ego_actions": [
+      [
+        "(-1, 0)",
+        370
+      ],
+      [
+        "interact",
+        26
+      ],
+      [
+        "(0, -1)",
+        4
+      ]
+    ],
+    "post_last_delivery_partner_actions": [
+      [
+        "interact",
+        399
+      ],
+      [
+        "(1, 0)",
+        1
+      ]
+    ]
+  }
+]

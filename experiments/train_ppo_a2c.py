@@ -15,9 +15,12 @@ and config recording for reproducible PPO/A2C experiments.
 import argparse
 import json
 import math
+import os
 from pathlib import Path
 import sys
 from typing import Any, Dict, Optional, Tuple, Type
+
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -121,7 +124,7 @@ def parse_args() -> argparse.Namespace:
         help="Enable potential-based progress-score shaping.",
     )
     parser.add_argument("--custom-shaping-gamma", type=float, default=0.99)
-    parser.add_argument("--custom-shaping-scale", type=float, default=0.4)
+    parser.add_argument("--custom-shaping-scale", type=float, default=1.2)
     parser.add_argument(
         "--progress-weight", type=float, default=None, help=argparse.SUPPRESS
     )

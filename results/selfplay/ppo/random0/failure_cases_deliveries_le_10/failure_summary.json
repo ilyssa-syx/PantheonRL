@@ -1,0 +1,206 @@
+[
+  {
+    "label": "baseline_seed1_deliveries_1",
+    "trace": "/workspace/PantheonRL/results/selfplay/ppo/random0/failure_cases_deliveries_le_10/baseline_seed1_deliveries_1_trace.csv",
+    "deliveries": 1.0,
+    "total_return": 49.0,
+    "delivery_steps": [
+      43
+    ],
+    "last_delivery_step": 43,
+    "final_pots": "(3, 0):empty;(4, 1):soup('onion', 3, 20)",
+    "final_p0": "(3, 1) held=dish",
+    "final_p1": "(1, 3) held=",
+    "final_objects": "(2, 1):onion;(4, 1):soup('onion', 3, 20)",
+    "late_ego_actions": [
+      [
+        "interact",
+        80
+      ]
+    ],
+    "late_partner_actions": [
+      [
+        "(0, 0)",
+        80
+      ]
+    ],
+    "post_last_delivery_ego_actions": [
+      [
+        "interact",
+        354
+      ],
+      [
+        "(0, -1)",
+        2
+      ],
+      [
+        "(-1, 0)",
+        1
+      ]
+    ],
+    "post_last_delivery_partner_actions": [
+      [
+        "(0, 0)",
+        356
+      ],
+      [
+        "interact",
+        1
+      ]
+    ]
+  },
+  {
+    "label": "custom_ss1.2_seed1_deliveries_3",
+    "trace": "/workspace/PantheonRL/results/selfplay/ppo/random0/failure_cases_deliveries_le_10/custom_ss1.2_seed1_deliveries_3_trace.csv",
+    "deliveries": 3.0,
+    "total_return": 118.99019999999932,
+    "delivery_steps": [
+      45,
+      92,
+      142
+    ],
+    "last_delivery_step": 142,
+    "final_pots": "(3, 0):empty;(4, 1):soup('onion', 3, 20)",
+    "final_p0": "(3, 2) held=",
+    "final_p1": "(1, 2) held=dish",
+    "final_objects": "(4, 1):soup('onion', 3, 20)",
+    "late_ego_actions": [
+      [
+        "interact",
+        80
+      ]
+    ],
+    "late_partner_actions": [
+      [
+        "interact",
+        80
+      ]
+    ],
+    "post_last_delivery_ego_actions": [
+      [
+        "interact",
+        251
+      ],
+      [
+        "(-1, 0)",
+        6
+      ],
+      [
+        "(0, -1)",
+        1
+      ]
+    ],
+    "post_last_delivery_partner_actions": [
+      [
+        "interact",
+        258
+      ]
+    ]
+  },
+  {
+    "label": "custom_ss0.2_pw2_seed2_deliveries_9",
+    "trace": "/workspace/PantheonRL/results/selfplay/ppo/random0/failure_cases_deliveries_le_10/custom_ss0.2_pw2_seed2_deliveries_9_trace.csv",
+    "deliveries": 9.0,
+    "total_return": 338.52239999999915,
+    "delivery_steps": [
+      46,
+      88,
+      130,
+      172,
+      214,
+      256,
+      298,
+      340,
+      382
+    ],
+    "last_delivery_step": 382,
+    "final_pots": "(3, 0):soup('onion', 2, 0);(4, 1):empty",
+    "final_p0": "(3, 1) held=onion",
+    "final_p1": "(1, 3) held=onion",
+    "final_objects": "(3, 0):soup('onion', 2, 0)",
+    "late_ego_actions": [
+      [
+        "interact",
+        46
+      ],
+      [
+        "(0, -1)",
+        14
+      ],
+      [
+        "(0, 1)",
+        13
+      ],
+      [
+        "(-1, 0)",
+        7
+      ]
+    ],
+    "late_partner_actions": [
+      [
+        "(0, 0)",
+        25
+      ],
+      [
+        "interact",
+        19
+      ],
+      [
+        "(1, 0)",
+        11
+      ],
+      [
+        "(0, 1)",
+        10
+      ],
+      [
+        "(0, -1)",
+        8
+      ],
+      [
+        "(-1, 0)",
+        7
+      ]
+    ],
+    "post_last_delivery_ego_actions": [
+      [
+        "(0, -1)",
+        6
+      ],
+      [
+        "interact",
+        5
+      ],
+      [
+        "(0, 1)",
+        4
+      ],
+      [
+        "(-1, 0)",
+        3
+      ]
+    ],
+    "post_last_delivery_partner_actions": [
+      [
+        "interact",
+        6
+      ],
+      [
+        "(0, 1)",
+        4
+      ],
+      [
+        "(0, -1)",
+        3
+      ],
+      [
+        "(1, 0)",
+        3
+      ],
+      [
+        "(-1, 0)",
+        2
+      ]
+    ]
+  }
+]

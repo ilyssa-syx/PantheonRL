@@ -15,7 +15,7 @@ LAYOUTS = ["simple", "unident_s", "random1", "random0", "random3"]
 SEEDS = [0, 1, 2]
 EXPLORATION_FRACTION = 0.1
 CUSTOM_SHAPING_GAMMA = 0.99
-CUSTOM_SHAPING_SCALE = 0.4
+CUSTOM_SHAPING_SCALE = 1.2
 
 
 def parse_args() -> argparse.Namespace:

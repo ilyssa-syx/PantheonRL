@@ -1,0 +1,52 @@
+{
+  "algo": "ppo",
+  "deterministic": true,
+  "device": "cuda",
+  "ego_seed": 2,
+  "episode_built_in_shaped_returns": [
+    9.0
+  ],
+  "episode_custom_shaped_returns": [
+    -2.290800000000016
+  ],
+  "episode_deliveries": [
+    0.0
+  ],
+  "episode_returns": [
+    6.709200000000109
+  ],
+  "episode_shaped_returns": [
+    6.709199999999984
+  ],
+  "episode_sparse_returns": [
+    0.0
+  ],
+  "episodes": 1,
+  "layout": "unident_s",
+  "max_return": 6.709200000000109,
+  "mean_built_in_shaped_return": 9.0,
+  "mean_custom_shaped_return": -2.290800000000016,
+  "mean_deliveries": 0.0,
+  "mean_return": 6.709200000000109,
+  "mean_shaped_return": 6.709199999999984,
+  "mean_sparse_return": 0.0,
+  "median_return": 6.709200000000109,
+  "min_return": 6.709200000000109,
+  "partner_seed": 1002,
+  "run_dir": "results/selfplay/ppo/unident_s/seed_2/steps_500000__partner_offset_1000__custom_dense__sg_0.99__ss_1.2",
+  "seed": 2,
+  "std_return": 0.0,
+  "training_actual_ego_timesteps": 501760,
+  "training_actual_partner_timesteps": 501760,
+  "training_effective_hyperparameters": null,
+  "training_env_kwargs": {
+    "custom_dense_reward": true,
+    "custom_shaping_gamma": 0.99,
+    "custom_shaping_scale": 1.2
+  },
+  "training_model_kwargs": {
+    "device": "cpu",
+    "verbose": 0
+  },
+  "training_requested_timesteps": 500000
+}
