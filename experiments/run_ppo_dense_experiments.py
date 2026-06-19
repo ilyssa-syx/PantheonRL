@@ -56,6 +56,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--gamma", type=float, default=None)
     parser.add_argument("--n-steps", type=int, default=None)
     parser.add_argument(
+        "--custom-shaping-version",
+        type=int,
+        default=1,
+        choices=[1, 2],
+        help="Custom dense reward version passed to train_ppo_a2c.py.",
+    )
+    parser.add_argument(
         "--no-custom-dense-reward",
         action="store_true",
         help="Disable the custom progress-score shaping. It is enabled by default.",
@@ -177,6 +184,7 @@ def run_matrix(args: argparse.Namespace) -> int:
             custom_dense_reward=use_custom_dense,
             custom_shaping_gamma=CUSTOM_SHAPING_GAMMA,
             custom_shaping_scale=CUSTOM_SHAPING_SCALE,
+            custom_shaping_version=args.custom_shaping_version,
         )
         run_dir = get_run_dir(run_args)
         result: Dict[str, Any] = {
@@ -186,6 +194,7 @@ def run_matrix(args: argparse.Namespace) -> int:
             "custom_dense_reward": use_custom_dense,
             "custom_shaping_gamma": CUSTOM_SHAPING_GAMMA,
             "custom_shaping_scale": CUSTOM_SHAPING_SCALE,
+            "custom_shaping_version": args.custom_shaping_version,
             "run_name": make_run_name(run_args),
             "run_dir": str(run_dir),
             "training": "pending",
@@ -219,6 +228,8 @@ def run_matrix(args: argparse.Namespace) -> int:
                             str(CUSTOM_SHAPING_GAMMA),
                             "--custom-shaping-scale",
                             str(CUSTOM_SHAPING_SCALE),
+                            "--custom-shaping-version",
+                            str(args.custom_shaping_version),
                         ]
                     )
                 for name in ("ent_coef", "learning_rate", "gamma", "n_steps"):

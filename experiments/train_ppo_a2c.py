@@ -126,6 +126,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--custom-shaping-gamma", type=float, default=0.99)
     parser.add_argument("--custom-shaping-scale", type=float, default=1.2)
     parser.add_argument(
+        "--custom-shaping-version",
+        type=int,
+        default=1,
+        choices=[1, 2],
+        help="Custom dense reward version. Version 2 adds late-stage grid-distance, staging, and useless-interact shaping.",
+    )
+    parser.add_argument(
         "--progress-weight", type=float, default=None, help=argparse.SUPPRESS
     )
     return parser.parse_args()
@@ -154,6 +161,8 @@ def validate_args(args: argparse.Namespace) -> None:
         raise ValueError("--n-steps must be positive")
     if args.custom_shaping_scale < 0:
         raise ValueError("--custom-shaping-scale must be non-negative")
+    if args.custom_shaping_version not in (1, 2):
+        raise ValueError("--custom-shaping-version must be 1 or 2")
     algo_gamma = 0.99 if args.gamma is None else args.gamma
     if args.custom_dense_reward and not math.isclose(
         args.custom_shaping_gamma, algo_gamma
@@ -180,6 +189,8 @@ def make_run_name(args: argparse.Namespace) -> str:
                 f"ss_{args.custom_shaping_scale}",
             ]
         )
+        if args.custom_shaping_version != 1:
+            parts.append(f"v{args.custom_shaping_version}_late")
     return "__".join(parts)
 
 
@@ -188,6 +199,7 @@ def build_env_kwargs(args: argparse.Namespace) -> Dict[str, Any]:
         "custom_dense_reward": args.custom_dense_reward,
         "custom_shaping_gamma": args.custom_shaping_gamma,
         "custom_shaping_scale": args.custom_shaping_scale,
+        "custom_shaping_version": args.custom_shaping_version,
     }
 
 

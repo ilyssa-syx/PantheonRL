@@ -1,3 +1,5 @@
+from collections import deque
+
 import gym
 import numpy as np
 from overcooked_ai_py.mdp.actions import Action
@@ -25,6 +27,11 @@ READY_SOUP_STALE_CAP = 0.6
 HELD_SOUP_STALE_GRACE = 5
 HELD_SOUP_STALE_COEF = 0.03
 HELD_SOUP_STALE_CAP = 0.4
+DISH_TO_READY_POT_DISTANCE_COEF = 0.03
+COUNTER_STAGING_BONUS = 0.2
+COUNTER_STAGING_CAP = 0.6
+USELESS_INTERACT_PENALTY = 0.05
+USELESS_INTERACT_PENALTY_CAP = 0.5
 
 class OvercookedMultiEnv(SimultaneousEnv):
     def __init__(
@@ -35,6 +42,7 @@ class OvercookedMultiEnv(SimultaneousEnv):
         custom_dense_reward=False,
         custom_shaping_gamma=0.99,
         custom_shaping_scale=1.2,
+        custom_shaping_version=1,
         progress_weight=None,
     ):
         """
@@ -45,12 +53,16 @@ class OvercookedMultiEnv(SimultaneousEnv):
         self.custom_dense_reward = bool(custom_dense_reward)
         self.custom_shaping_gamma = float(custom_shaping_gamma)
         self.custom_shaping_scale = float(custom_shaping_scale)
+        self.custom_shaping_version = int(custom_shaping_version)
+        if self.custom_shaping_version not in (1, 2):
+            raise ValueError("custom_shaping_version must be 1 or 2")
         # Deprecated compatibility knob; custom_shaping_scale is now the
         # single multiplier applied to progress-score differences.
         self.progress_weight = progress_weight
         self.cumulative_custom_shaped_rewards = 0.0
         self.ready_soup_ages = {}
         self.held_soup_ages = {}
+        self.useless_interact_counts = [0, 0]
 
         DEFAULT_ENV_PARAMS = {
             "horizon": 400
@@ -65,6 +77,8 @@ class OvercookedMultiEnv(SimultaneousEnv):
         }
 
         self.mdp = OvercookedGridworld.from_layout_name(layout_name=layout_name, rew_shaping_params=rew_shaping_params)
+        self.grid_distances = self._precompute_grid_distances()
+        self.non_edge_counters = self._get_non_edge_counters()
         try:
             mlp = MediumLevelPlanner.from_pickle_or_compute(
                 self.mdp, NO_COUNTERS_PARAMS, force_compute=False
@@ -137,10 +151,13 @@ class OvercookedMultiEnv(SimultaneousEnv):
             return 1
         return 0
 
-    def _potential(self, state):
+    def _potential(self, state, distance_fn=None, serving_locations=None):
         ready_ages = self.ready_soup_ages
         held_ages = self.held_soup_ages
-        serving_locations = self.mdp.get_serving_locations()
+        if distance_fn is None:
+            distance_fn = self._nearest_distance
+        if serving_locations is None:
+            serving_locations = self.mdp.get_serving_locations()
         dish_available = self._dish_available(state)
         ready_pots = 0
         potential = 0.0
@@ -173,7 +190,7 @@ class OvercookedMultiEnv(SimultaneousEnv):
                 and player.held_object.name == "soup"
             ):
                 potential += HELD_SOUP_VALUE
-                potential -= HELD_SOUP_DISTANCE_COEF * self._nearest_distance(
+                potential -= HELD_SOUP_DISTANCE_COEF * distance_fn(
                     player.position, serving_locations
                 )
                 potential -= self._capped_age_penalty(
@@ -189,11 +206,57 @@ class OvercookedMultiEnv(SimultaneousEnv):
                 and pos not in self.mdp.get_pot_locations()
             ):
                 potential += COUNTER_SOUP_VALUE
-                potential -= COUNTER_SOUP_DISTANCE_COEF * self._nearest_distance(
+                potential -= COUNTER_SOUP_DISTANCE_COEF * distance_fn(
                     pos, serving_locations
                 )
 
         return potential
+
+    def _potential_v2(self, state):
+        if not self._is_late_stage_shaping_state(state):
+            return self._potential(state)
+
+        ready_pot_targets = self._interaction_targets(self._ready_soup_positions(state))
+        serving_targets = self._interaction_targets(self.mdp.get_serving_locations())
+        potential = self._potential(
+            state,
+            distance_fn=self._nearest_grid_distance,
+            serving_locations=serving_targets,
+        )
+
+        for player in state.players:
+            if player.held_object is None:
+                continue
+            if player.held_object.name == "dish" and ready_pot_targets:
+                potential -= (
+                    DISH_TO_READY_POT_DISTANCE_COEF
+                    * self._nearest_grid_distance(player.position, ready_pot_targets)
+                )
+
+        staged_objects = sum(
+            1
+            for pos, obj in state.objects.items()
+            if pos in self.non_edge_counters and obj.name in ("dish", "soup")
+        )
+        potential += min(
+            staged_objects * COUNTER_STAGING_BONUS,
+            COUNTER_STAGING_CAP,
+        )
+        return potential
+
+    def _is_late_stage_shaping_state(self, state):
+        if self._ready_soup_positions(state):
+            return True
+        for player in state.players:
+            if (
+                player.held_object is not None
+                and player.held_object.name == "soup"
+            ):
+                return True
+        return any(
+            obj.name == "soup" and pos not in self.mdp.get_pot_locations()
+            for pos, obj in state.objects.items()
+        )
 
     def _dish_available(self, state):
         if any(
@@ -248,17 +311,129 @@ class OvercookedMultiEnv(SimultaneousEnv):
         x, y = position
         return min(abs(x - tx) + abs(y - ty) for tx, ty in targets)
 
+    def _precompute_grid_distances(self):
+        valid_positions = set(self.mdp.get_valid_player_positions())
+        distances = {}
+        for source in valid_positions:
+            source_distances = {source: 0}
+            queue = deque([source])
+            while queue:
+                pos = queue.popleft()
+                for action in Action.MOTION_ACTIONS:
+                    next_pos = Action.move_in_direction(pos, action)
+                    if (
+                        next_pos in valid_positions
+                        and next_pos not in source_distances
+                    ):
+                        source_distances[next_pos] = source_distances[pos] + 1
+                        queue.append(next_pos)
+            distances[source] = source_distances
+        return distances
+
+    def _interaction_targets(self, feature_positions):
+        targets = set()
+        valid_positions = set(self.mdp.get_valid_player_positions())
+        for pos in feature_positions:
+            for action in Action.MOTION_ACTIONS:
+                adjacent_pos = Action.move_in_direction(pos, action)
+                if adjacent_pos in valid_positions:
+                    targets.add(adjacent_pos)
+        return targets
+
+    def _nearest_grid_distance(self, position, targets):
+        if not targets:
+            return 0.0
+        if position in self.grid_distances:
+            source_positions = {position}
+        else:
+            source_positions = self._interaction_targets([position])
+        distances = []
+        for source in source_positions:
+            source_distances = self.grid_distances.get(source, {})
+            distances.extend(
+                source_distances[target]
+                for target in targets
+                if target in source_distances
+            )
+        if not distances:
+            return 0.0
+        return float(min(distances))
+
+    def _get_non_edge_counters(self):
+        width = len(self.mdp.terrain_mtx[0])
+        height = len(self.mdp.terrain_mtx)
+        return {
+            (x, y)
+            for x, y in self.mdp.get_counter_locations()
+            if 0 < x < width - 1 and 0 < y < height - 1
+        }
+
+    def _object_signature(self, obj):
+        if obj is None:
+            return None
+        if obj.name == "soup" and obj.state is not None:
+            soup_type, num_items, _ = obj.state
+            return (obj.name, soup_type, num_items)
+        return (obj.name, obj.state)
+
+    def _interaction_signature(self, state):
+        held_objects = tuple(
+            self._object_signature(player.held_object)
+            for player in state.players
+        )
+        interactive_objects = tuple(
+            sorted(
+                (pos, self._object_signature(obj))
+                for pos, obj in state.objects.items()
+                if pos in self.mdp.get_counter_locations()
+                or pos in self.mdp.get_pot_locations()
+            )
+        )
+        return held_objects, interactive_objects
+
+    def _calculate_useless_interact_penalty(
+        self, prev_state, next_state, joint_action, sparse_reward
+    ):
+        prev_signature = self._interaction_signature(prev_state)
+        next_signature = self._interaction_signature(next_state)
+        late_stage = (
+            self._is_late_stage_shaping_state(prev_state)
+            or self._is_late_stage_shaping_state(next_state)
+        )
+        no_interaction_change = (
+            late_stage
+            and prev_signature == next_signature
+            and float(sparse_reward) == 0.0
+        )
+        penalty = 0.0
+        for idx, action in enumerate(joint_action):
+            if action == Action.INTERACT and no_interaction_change:
+                self.useless_interact_counts[idx] += 1
+                if (
+                    self.useless_interact_counts[idx] * USELESS_INTERACT_PENALTY
+                    <= USELESS_INTERACT_PENALTY_CAP
+                ):
+                    penalty -= USELESS_INTERACT_PENALTY
+            else:
+                self.useless_interact_counts[idx] = 0
+        return penalty
+
     def _calculate_custom_shaping(self, prev_state, next_state, done):
         if not self.custom_dense_reward:
             self.ready_soup_ages, self.held_soup_ages = self._next_age_trackers(
                 next_state
             )
             return 0.0
-        prev_phi = self._potential(prev_state)
+        potential_fn = (
+            self._potential
+            if self.custom_shaping_version == 1
+            else self._potential_v2
+        )
+        prev_phi = potential_fn(prev_state)
         next_ready_ages, next_held_ages = self._next_age_trackers(next_state)
         self.ready_soup_ages = next_ready_ages
         self.held_soup_ages = next_held_ages
-        next_phi = self._potential(next_state)
+        next_phi = potential_fn(next_state)
         return self.custom_shaping_scale * (
             self.custom_shaping_gamma * next_phi - prev_phi
         )
@@ -293,6 +468,10 @@ class OvercookedMultiEnv(SimultaneousEnv):
         custom_shaped_reward = self._calculate_custom_shaping(
             prev_state, next_state, done
         )
+        if self.custom_dense_reward and self.custom_shaping_version == 2:
+            custom_shaped_reward += self._calculate_useless_interact_penalty(
+                prev_state, next_state, joint_action, sparse_reward
+            )
         self.cumulative_custom_shaped_rewards += custom_shaped_reward
         shaped_reward = built_in_shaped_reward + custom_shaped_reward
         reward = sparse_reward + shaped_reward
@@ -324,6 +503,7 @@ class OvercookedMultiEnv(SimultaneousEnv):
         """
         self.base_env.reset()
         self.cumulative_custom_shaped_rewards = 0.0
+        self.useless_interact_counts = [0, 0]
         self.ready_soup_ages, self.held_soup_ages = self._next_age_trackers(
             self.base_env.state
         )
