@@ -5,6 +5,8 @@ data/
 instance/
 .*node_modules/
 logs/
+!results/**/logs/
+!results/**/logs/**
 *__pycache__*
 *.ipynb_checkpoints*
 trajs/
