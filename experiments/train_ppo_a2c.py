@@ -83,6 +83,11 @@ def parse_args() -> argparse.Namespace:
         help="Root directory for models, logs, and config.",
     )
     parser.add_argument(
+        "--run-name-suffix",
+        default="",
+        help="Optional suffix appended to the generated run directory name.",
+    )
+    parser.add_argument(
         "--ent-coef",
         type=float,
         default=None,
@@ -126,11 +131,25 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--custom-shaping-gamma", type=float, default=0.99)
     parser.add_argument("--custom-shaping-scale", type=float, default=1.2)
     parser.add_argument(
+        "--custom-shaping-extra-scale-v2",
+        "--custom-shaping-scale-v2",
+        dest="custom_shaping_extra_scale_v2",
+        type=float,
+        default=None,
+        help="Scale for version-2-only extra shaping after v2 is active.",
+    )
+    parser.add_argument(
         "--custom-shaping-version",
         type=int,
         default=1,
         choices=[1, 2],
-        help="Custom dense reward version. Version 2 adds late-stage grid-distance, staging, and useless-interact shaping.",
+        help="Custom dense reward version. Version 2 adds late-stage extra shaping.",
+    )
+    parser.add_argument(
+        "--custom-shaping-version-switch-step",
+        type=int,
+        default=None,
+        help="Switch custom shaping to version 2 after this many environment steps.",
     )
     parser.add_argument(
         "--progress-weight", type=float, default=None, help=argparse.SUPPRESS
@@ -157,12 +176,26 @@ def build_model_kwargs(args: argparse.Namespace) -> Dict[str, Any]:
 def validate_args(args: argparse.Namespace) -> None:
     if args.timesteps <= 0:
         raise ValueError("--timesteps must be positive")
+    if "/" in args.run_name_suffix or "\\" in args.run_name_suffix:
+        raise ValueError("--run-name-suffix must not contain path separators")
     if args.n_steps is not None and args.n_steps <= 0:
         raise ValueError("--n-steps must be positive")
     if args.custom_shaping_scale < 0:
         raise ValueError("--custom-shaping-scale must be non-negative")
+    if (
+        args.custom_shaping_extra_scale_v2 is not None
+        and args.custom_shaping_extra_scale_v2 < 0
+    ):
+        raise ValueError("--custom-shaping-extra-scale-v2 must be non-negative")
     if args.custom_shaping_version not in (1, 2):
         raise ValueError("--custom-shaping-version must be 1 or 2")
+    if (
+        args.custom_shaping_version_switch_step is not None
+        and args.custom_shaping_version_switch_step < 0
+    ):
+        raise ValueError(
+            "--custom-shaping-version-switch-step must be non-negative"
+        )
     algo_gamma = 0.99 if args.gamma is None else args.gamma
     if args.custom_dense_reward and not math.isclose(
         args.custom_shaping_gamma, algo_gamma
@@ -173,6 +206,11 @@ def validate_args(args: argparse.Namespace) -> None:
 
 
 def make_run_name(args: argparse.Namespace) -> str:
+    custom_shaping_extra_scale_v2 = getattr(
+        args,
+        "custom_shaping_extra_scale_v2",
+        getattr(args, "custom_shaping_scale_v2", None),
+    )
     parts = [
         f"steps_{args.timesteps}",
         f"partner_offset_{args.partner_seed_offset}",
@@ -189,17 +227,30 @@ def make_run_name(args: argparse.Namespace) -> str:
                 f"ss_{args.custom_shaping_scale}",
             ]
         )
+        if custom_shaping_extra_scale_v2 is not None:
+            parts.append(f"v2extra_{custom_shaping_extra_scale_v2}")
         if args.custom_shaping_version != 1:
             parts.append(f"v{args.custom_shaping_version}_late")
-    return "__".join(parts)
+        if args.custom_shaping_version_switch_step is not None:
+            parts.append(f"switch_{args.custom_shaping_version_switch_step}")
+    return "__".join(parts) + getattr(args, "run_name_suffix", "")
 
 
 def build_env_kwargs(args: argparse.Namespace) -> Dict[str, Any]:
+    custom_shaping_extra_scale_v2 = getattr(
+        args,
+        "custom_shaping_extra_scale_v2",
+        getattr(args, "custom_shaping_scale_v2", None),
+    )
     return {
         "custom_dense_reward": args.custom_dense_reward,
         "custom_shaping_gamma": args.custom_shaping_gamma,
         "custom_shaping_scale": args.custom_shaping_scale,
+        "custom_shaping_extra_scale_v2": custom_shaping_extra_scale_v2,
         "custom_shaping_version": args.custom_shaping_version,
+        "custom_shaping_version_switch_step": (
+            args.custom_shaping_version_switch_step
+        ),
     }
 
 

@@ -1,5 +1,3 @@
-from collections import deque
-
 import gym
 import numpy as np
 from overcooked_ai_py.mdp.actions import Action
@@ -21,13 +19,13 @@ HELD_SOUP_VALUE = 2.0
 COUNTER_SOUP_VALUE = 1.8
 HELD_SOUP_DISTANCE_COEF = 0.05
 COUNTER_SOUP_DISTANCE_COEF = 0.03
+DISH_TO_READY_POT_DISTANCE_COEF = 0.03
 READY_SOUP_STALE_GRACE = 5
 READY_SOUP_STALE_COEF = 0.05
 READY_SOUP_STALE_CAP = 0.6
 HELD_SOUP_STALE_GRACE = 5
 HELD_SOUP_STALE_COEF = 0.03
 HELD_SOUP_STALE_CAP = 0.4
-DISH_TO_READY_POT_DISTANCE_COEF = 0.03
 COUNTER_STAGING_BONUS = 0.2
 COUNTER_STAGING_CAP = 0.6
 USELESS_INTERACT_PENALTY = 0.05
@@ -42,8 +40,11 @@ class OvercookedMultiEnv(SimultaneousEnv):
         custom_dense_reward=False,
         custom_shaping_gamma=0.99,
         custom_shaping_scale=1.2,
+        custom_shaping_extra_scale_v2=None,
         custom_shaping_version=1,
+        custom_shaping_version_switch_step=None,
         progress_weight=None,
+        custom_shaping_scale_v2=None,
     ):
         """
         base_env: OvercookedEnv
@@ -53,13 +54,30 @@ class OvercookedMultiEnv(SimultaneousEnv):
         self.custom_dense_reward = bool(custom_dense_reward)
         self.custom_shaping_gamma = float(custom_shaping_gamma)
         self.custom_shaping_scale = float(custom_shaping_scale)
+        if custom_shaping_extra_scale_v2 is None:
+            custom_shaping_extra_scale_v2 = custom_shaping_scale_v2
+        self.custom_shaping_extra_scale_v2 = (
+            self.custom_shaping_scale
+            if custom_shaping_extra_scale_v2 is None
+            else float(custom_shaping_extra_scale_v2)
+        )
         self.custom_shaping_version = int(custom_shaping_version)
         if self.custom_shaping_version not in (1, 2):
             raise ValueError("custom_shaping_version must be 1 or 2")
-        # Deprecated compatibility knob; custom_shaping_scale is now the
-        # single multiplier applied to progress-score differences.
+        self.custom_shaping_version_switch_step = (
+            None
+            if custom_shaping_version_switch_step is None
+            else int(custom_shaping_version_switch_step)
+        )
+        if (
+            self.custom_shaping_version_switch_step is not None
+            and self.custom_shaping_version_switch_step < 0
+        ):
+            raise ValueError("custom_shaping_version_switch_step must be non-negative")
+        # Deprecated compatibility knob kept for old experiment configs.
         self.progress_weight = progress_weight
         self.cumulative_custom_shaped_rewards = 0.0
+        self.custom_shaping_elapsed_steps = 0
         self.ready_soup_ages = {}
         self.held_soup_ages = {}
         self.useless_interact_counts = [0, 0]
@@ -77,7 +95,6 @@ class OvercookedMultiEnv(SimultaneousEnv):
         }
 
         self.mdp = OvercookedGridworld.from_layout_name(layout_name=layout_name, rew_shaping_params=rew_shaping_params)
-        self.grid_distances = self._precompute_grid_distances()
         self.non_edge_counters = self._get_non_edge_counters()
         try:
             mlp = MediumLevelPlanner.from_pickle_or_compute(
@@ -152,8 +169,6 @@ class OvercookedMultiEnv(SimultaneousEnv):
         return 0
 
     def _potential(self, state, distance_fn=None, serving_locations=None):
-        ready_ages = self.ready_soup_ages
-        held_ages = self.held_soup_ages
         if distance_fn is None:
             distance_fn = self._nearest_distance
         if serving_locations is None:
@@ -172,19 +187,14 @@ class OvercookedMultiEnv(SimultaneousEnv):
             elif cook_time >= self.mdp.soup_cooking_time:
                 ready_pots += 1
                 potential += POT_PROGRESS_VALUES["ready"]
-                potential -= self._capped_age_penalty(
-                    ready_ages.get(pot_pos, 0),
-                    READY_SOUP_STALE_GRACE,
-                    READY_SOUP_STALE_COEF,
-                    READY_SOUP_STALE_CAP,
-                )
             else:
                 potential += POT_PROGRESS_VALUES["cooking"]
 
         if ready_pots and dish_available:
             potential += READY_WITH_DISH_BONUS
 
-        for player_idx, player in enumerate(state.players):
+        ready_pot_positions = self._ready_soup_positions(state)
+        for player in state.players:
             if (
                 player.held_object is not None
                 and player.held_object.name == "soup"
@@ -193,11 +203,13 @@ class OvercookedMultiEnv(SimultaneousEnv):
                 potential -= HELD_SOUP_DISTANCE_COEF * distance_fn(
                     player.position, serving_locations
                 )
-                potential -= self._capped_age_penalty(
-                    held_ages.get(player_idx, 0),
-                    HELD_SOUP_STALE_GRACE,
-                    HELD_SOUP_STALE_COEF,
-                    HELD_SOUP_STALE_CAP,
+            elif (
+                player.held_object is not None
+                and player.held_object.name == "dish"
+                and ready_pot_positions
+            ):
+                potential -= DISH_TO_READY_POT_DISTANCE_COEF * distance_fn(
+                    player.position, ready_pot_positions
                 )
 
         for pos, obj in state.objects.items():
@@ -213,26 +225,12 @@ class OvercookedMultiEnv(SimultaneousEnv):
         return potential
 
     def _potential_v2(self, state):
+        return self._potential(state) + self._potential_v2_extra(state)
+
+    def _potential_v2_extra(self, state):
         if not self._is_late_stage_shaping_state(state):
-            return self._potential(state)
-
-        ready_pot_targets = self._interaction_targets(self._ready_soup_positions(state))
-        serving_targets = self._interaction_targets(self.mdp.get_serving_locations())
-        potential = self._potential(
-            state,
-            distance_fn=self._nearest_grid_distance,
-            serving_locations=serving_targets,
-        )
-
-        for player in state.players:
-            if player.held_object is None:
-                continue
-            if player.held_object.name == "dish" and ready_pot_targets:
-                potential -= (
-                    DISH_TO_READY_POT_DISTANCE_COEF
-                    * self._nearest_grid_distance(player.position, ready_pot_targets)
-                )
-
+            return 0.0
+        potential = 0.0
         staged_objects = sum(
             1
             for pos, obj in state.objects.items()
@@ -242,6 +240,20 @@ class OvercookedMultiEnv(SimultaneousEnv):
             staged_objects * COUNTER_STAGING_BONUS,
             COUNTER_STAGING_CAP,
         )
+        for pot_pos in self._ready_soup_positions(state):
+            potential -= self._capped_age_penalty(
+                self.ready_soup_ages.get(pot_pos, 0),
+                READY_SOUP_STALE_GRACE,
+                READY_SOUP_STALE_COEF,
+                READY_SOUP_STALE_CAP,
+            )
+        for player_idx in self._held_soup_player_indices(state):
+            potential -= self._capped_age_penalty(
+                self.held_soup_ages.get(player_idx, 0),
+                HELD_SOUP_STALE_GRACE,
+                HELD_SOUP_STALE_COEF,
+                HELD_SOUP_STALE_CAP,
+            )
         return potential
 
     def _is_late_stage_shaping_state(self, state):
@@ -311,54 +323,6 @@ class OvercookedMultiEnv(SimultaneousEnv):
         x, y = position
         return min(abs(x - tx) + abs(y - ty) for tx, ty in targets)
 
-    def _precompute_grid_distances(self):
-        valid_positions = set(self.mdp.get_valid_player_positions())
-        distances = {}
-        for source in valid_positions:
-            source_distances = {source: 0}
-            queue = deque([source])
-            while queue:
-                pos = queue.popleft()
-                for action in Action.MOTION_ACTIONS:
-                    next_pos = Action.move_in_direction(pos, action)
-                    if (
-                        next_pos in valid_positions
-                        and next_pos not in source_distances
-                    ):
-                        source_distances[next_pos] = source_distances[pos] + 1
-                        queue.append(next_pos)
-            distances[source] = source_distances
-        return distances
-
-    def _interaction_targets(self, feature_positions):
-        targets = set()
-        valid_positions = set(self.mdp.get_valid_player_positions())
-        for pos in feature_positions:
-            for action in Action.MOTION_ACTIONS:
-                adjacent_pos = Action.move_in_direction(pos, action)
-                if adjacent_pos in valid_positions:
-                    targets.add(adjacent_pos)
-        return targets
-
-    def _nearest_grid_distance(self, position, targets):
-        if not targets:
-            return 0.0
-        if position in self.grid_distances:
-            source_positions = {position}
-        else:
-            source_positions = self._interaction_targets([position])
-        distances = []
-        for source in source_positions:
-            source_distances = self.grid_distances.get(source, {})
-            distances.extend(
-                source_distances[target]
-                for target in targets
-                if target in source_distances
-            )
-        if not distances:
-            return 0.0
-        return float(min(distances))
-
     def _get_non_edge_counters(self):
         width = len(self.mdp.terrain_mtx[0])
         height = len(self.mdp.terrain_mtx)
@@ -418,25 +382,37 @@ class OvercookedMultiEnv(SimultaneousEnv):
                 self.useless_interact_counts[idx] = 0
         return penalty
 
+    def _active_custom_shaping_version(self):
+        if (
+            self.custom_shaping_version_switch_step is not None
+            and self.custom_shaping_elapsed_steps
+            >= self.custom_shaping_version_switch_step
+        ):
+            return 2
+        return self.custom_shaping_version
+
     def _calculate_custom_shaping(self, prev_state, next_state, done):
         if not self.custom_dense_reward:
             self.ready_soup_ages, self.held_soup_ages = self._next_age_trackers(
                 next_state
             )
             return 0.0
-        potential_fn = (
-            self._potential
-            if self.custom_shaping_version == 1
-            else self._potential_v2
-        )
-        prev_phi = potential_fn(prev_state)
+        prev_phi = self._potential(prev_state)
+        prev_extra_phi = self._potential_v2_extra(prev_state)
         next_ready_ages, next_held_ages = self._next_age_trackers(next_state)
         self.ready_soup_ages = next_ready_ages
         self.held_soup_ages = next_held_ages
-        next_phi = potential_fn(next_state)
-        return self.custom_shaping_scale * (
+        next_phi = self._potential(next_state)
+        shaped_reward = self.custom_shaping_scale * (
             self.custom_shaping_gamma * next_phi - prev_phi
         )
+
+        if self._active_custom_shaping_version() == 2:
+            next_extra_phi = self._potential_v2_extra(next_state)
+            shaped_reward += self.custom_shaping_extra_scale_v2 * (
+                self.custom_shaping_gamma * next_extra_phi - prev_extra_phi
+            )
+        return shaped_reward
 
     def _setup_observation_space(self):
         dummy_state = self.mdp.get_standard_start_state()
@@ -468,10 +444,15 @@ class OvercookedMultiEnv(SimultaneousEnv):
         custom_shaped_reward = self._calculate_custom_shaping(
             prev_state, next_state, done
         )
-        if self.custom_dense_reward and self.custom_shaping_version == 2:
-            custom_shaped_reward += self._calculate_useless_interact_penalty(
-                prev_state, next_state, joint_action, sparse_reward
+        active_custom_shaping_version = self._active_custom_shaping_version()
+        if self.custom_dense_reward and active_custom_shaping_version == 2:
+            custom_shaped_reward += (
+                self.custom_shaping_extra_scale_v2
+                * self._calculate_useless_interact_penalty(
+                    prev_state, next_state, joint_action, sparse_reward
+                )
             )
+        self.custom_shaping_elapsed_steps += 1
         self.cumulative_custom_shaped_rewards += custom_shaped_reward
         shaped_reward = built_in_shaped_reward + custom_shaped_reward
         reward = sparse_reward + shaped_reward

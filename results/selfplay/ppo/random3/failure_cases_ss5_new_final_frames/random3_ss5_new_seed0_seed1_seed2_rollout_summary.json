@@ -1,0 +1,1256 @@
+[
+  {
+    "builtin": 21.0,
+    "custom": -31.735000000000337,
+    "deliveries": 0.0,
+    "ego_counts": {
+      "(-1, 0)": 33,
+      "(0, -1)": 24,
+      "(0, 1)": 19,
+      "(1, 0)": 32,
+      "interact": 292
+    },
+    "final_held": [
+      "onion",
+      null
+    ],
+    "final_objects": {
+      "(1, 4)": [
+        "dish",
+        null
+      ],
+      "(2, 2)": [
+        "dish",
+        null
+      ],
+      "(3, 0)": [
+        "soup",
+        [
+          "onion",
+          3,
+          20
+        ]
+      ],
+      "(4, 0)": [
+        "soup",
+        [
+          "onion",
+          3,
+          20
+        ]
+      ]
+    },
+    "final_orientations": [
+      [
+        0,
+        -1
+      ],
+      [
+        -1,
+        0
+      ]
+    ],
+    "final_positions": [
+      [
+        3,
+        1
+      ],
+      [
+        1,
+        1
+      ]
+    ],
+    "final_pot_states": "{'empty': [], 'onion': defaultdict(<class 'list'>, {'ready': [(3, 0), (4, 0)]}), 'tomato': defaultdict(<class 'list'>, {})}",
+    "last10": [
+      {
+        "ego_action": "interact",
+        "held": [
+          "onion",
+          null
+        ],
+        "orientations": [
+          [
+            0,
+            -1
+          ],
+          [
+            -1,
+            0
+          ]
+        ],
+        "partner_action": "(-1, 0)",
+        "positions": [
+          [
+            3,
+            1
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 391
+      },
+      {
+        "ego_action": "interact",
+        "held": [
+          "onion",
+          null
+        ],
+        "orientations": [
+          [
+            0,
+            -1
+          ],
+          [
+            -1,
+            0
+          ]
+        ],
+        "partner_action": "(-1, 0)",
+        "positions": [
+          [
+            3,
+            1
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 392
+      },
+      {
+        "ego_action": "interact",
+        "held": [
+          "onion",
+          null
+        ],
+        "orientations": [
+          [
+            0,
+            -1
+          ],
+          [
+            -1,
+            0
+          ]
+        ],
+        "partner_action": "(-1, 0)",
+        "positions": [
+          [
+            3,
+            1
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 393
+      },
+      {
+        "ego_action": "interact",
+        "held": [
+          "onion",
+          null
+        ],
+        "orientations": [
+          [
+            0,
+            -1
+          ],
+          [
+            -1,
+            0
+          ]
+        ],
+        "partner_action": "(-1, 0)",
+        "positions": [
+          [
+            3,
+            1
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 394
+      },
+      {
+        "ego_action": "interact",
+        "held": [
+          "onion",
+          null
+        ],
+        "orientations": [
+          [
+            0,
+            -1
+          ],
+          [
+            -1,
+            0
+          ]
+        ],
+        "partner_action": "(-1, 0)",
+        "positions": [
+          [
+            3,
+            1
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 395
+      },
+      {
+        "ego_action": "interact",
+        "held": [
+          "onion",
+          null
+        ],
+        "orientations": [
+          [
+            0,
+            -1
+          ],
+          [
+            -1,
+            0
+          ]
+        ],
+        "partner_action": "(-1, 0)",
+        "positions": [
+          [
+            3,
+            1
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 396
+      },
+      {
+        "ego_action": "interact",
+        "held": [
+          "onion",
+          null
+        ],
+        "orientations": [
+          [
+            0,
+            -1
+          ],
+          [
+            -1,
+            0
+          ]
+        ],
+        "partner_action": "(-1, 0)",
+        "positions": [
+          [
+            3,
+            1
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 397
+      },
+      {
+        "ego_action": "interact",
+        "held": [
+          "onion",
+          null
+        ],
+        "orientations": [
+          [
+            0,
+            -1
+          ],
+          [
+            -1,
+            0
+          ]
+        ],
+        "partner_action": "(-1, 0)",
+        "positions": [
+          [
+            3,
+            1
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 398
+      },
+      {
+        "ego_action": "interact",
+        "held": [
+          "onion",
+          null
+        ],
+        "orientations": [
+          [
+            0,
+            -1
+          ],
+          [
+            -1,
+            0
+          ]
+        ],
+        "partner_action": "(-1, 0)",
+        "positions": [
+          [
+            3,
+            1
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 399
+      },
+      {
+        "ego_action": "interact",
+        "held": [
+          "onion",
+          null
+        ],
+        "orientations": [
+          [
+            0,
+            -1
+          ],
+          [
+            -1,
+            0
+          ]
+        ],
+        "partner_action": "(-1, 0)",
+        "positions": [
+          [
+            3,
+            1
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 400
+      }
+    ],
+    "last30_ego_counts": {
+      "interact": 30
+    },
+    "last30_partner_counts": {
+      "(-1, 0)": 30
+    },
+    "partner_counts": {
+      "(-1, 0)": 368,
+      "(0, -1)": 7,
+      "(0, 1)": 6,
+      "(1, 0)": 8,
+      "interact": 11
+    },
+    "progress_counts": {
+      "0": 2,
+      "1": 10,
+      "2": 18,
+      "3": 17,
+      "5": 19,
+      "6": 334
+    },
+    "progress_transitions": [
+      [
+        0,
+        0
+      ],
+      [
+        2,
+        1
+      ],
+      [
+        12,
+        2
+      ],
+      [
+        30,
+        3
+      ],
+      [
+        47,
+        5
+      ],
+      [
+        66,
+        6
+      ]
+    ],
+    "return": -10.735000000000323,
+    "seed": 0,
+    "sparse": 0.0,
+    "sparse_steps": [],
+    "step": 400
+  },
+  {
+    "builtin": 17.0,
+    "custom": -2.3615000000000013,
+    "deliveries": 1.0,
+    "ego_counts": {
+      "(-1, 0)": 14,
+      "(0, -1)": 10,
+      "(0, 1)": 10,
+      "(1, 0)": 16,
+      "interact": 350
+    },
+    "final_held": [
+      null,
+      null
+    ],
+    "final_objects": {
+      "(2, 2)": [
+        "dish",
+        null
+      ]
+    },
+    "final_orientations": [
+      [
+        -1,
+        0
+      ],
+      [
+        0,
+        -1
+      ]
+    ],
+    "final_positions": [
+      [
+        4,
+        3
+      ],
+      [
+        1,
+        1
+      ]
+    ],
+    "final_pot_states": "{'empty': [(3, 0), (4, 0)], 'onion': defaultdict(<class 'list'>, {}), 'tomato': defaultdict(<class 'list'>, {})}",
+    "last10": [
+      {
+        "ego_action": "interact",
+        "held": [
+          null,
+          null
+        ],
+        "orientations": [
+          [
+            -1,
+            0
+          ],
+          [
+            0,
+            -1
+          ]
+        ],
+        "partner_action": "(0, 0)",
+        "positions": [
+          [
+            4,
+            3
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 391
+      },
+      {
+        "ego_action": "interact",
+        "held": [
+          null,
+          null
+        ],
+        "orientations": [
+          [
+            -1,
+            0
+          ],
+          [
+            0,
+            -1
+          ]
+        ],
+        "partner_action": "(0, 0)",
+        "positions": [
+          [
+            4,
+            3
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 392
+      },
+      {
+        "ego_action": "interact",
+        "held": [
+          null,
+          null
+        ],
+        "orientations": [
+          [
+            -1,
+            0
+          ],
+          [
+            0,
+            -1
+          ]
+        ],
+        "partner_action": "(0, 0)",
+        "positions": [
+          [
+            4,
+            3
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 393
+      },
+      {
+        "ego_action": "interact",
+        "held": [
+          null,
+          null
+        ],
+        "orientations": [
+          [
+            -1,
+            0
+          ],
+          [
+            0,
+            -1
+          ]
+        ],
+        "partner_action": "(0, 0)",
+        "positions": [
+          [
+            4,
+            3
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 394
+      },
+      {
+        "ego_action": "interact",
+        "held": [
+          null,
+          null
+        ],
+        "orientations": [
+          [
+            -1,
+            0
+          ],
+          [
+            0,
+            -1
+          ]
+        ],
+        "partner_action": "(0, 0)",
+        "positions": [
+          [
+            4,
+            3
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 395
+      },
+      {
+        "ego_action": "interact",
+        "held": [
+          null,
+          null
+        ],
+        "orientations": [
+          [
+            -1,
+            0
+          ],
+          [
+            0,
+            -1
+          ]
+        ],
+        "partner_action": "(0, 0)",
+        "positions": [
+          [
+            4,
+            3
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 396
+      },
+      {
+        "ego_action": "interact",
+        "held": [
+          null,
+          null
+        ],
+        "orientations": [
+          [
+            -1,
+            0
+          ],
+          [
+            0,
+            -1
+          ]
+        ],
+        "partner_action": "(0, 0)",
+        "positions": [
+          [
+            4,
+            3
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 397
+      },
+      {
+        "ego_action": "interact",
+        "held": [
+          null,
+          null
+        ],
+        "orientations": [
+          [
+            -1,
+            0
+          ],
+          [
+            0,
+            -1
+          ]
+        ],
+        "partner_action": "(0, 0)",
+        "positions": [
+          [
+            4,
+            3
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 398
+      },
+      {
+        "ego_action": "interact",
+        "held": [
+          null,
+          null
+        ],
+        "orientations": [
+          [
+            -1,
+            0
+          ],
+          [
+            0,
+            -1
+          ]
+        ],
+        "partner_action": "(0, 0)",
+        "positions": [
+          [
+            4,
+            3
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 399
+      },
+      {
+        "ego_action": "interact",
+        "held": [
+          null,
+          null
+        ],
+        "orientations": [
+          [
+            -1,
+            0
+          ],
+          [
+            0,
+            -1
+          ]
+        ],
+        "partner_action": "(0, 0)",
+        "positions": [
+          [
+            4,
+            3
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 400
+      }
+    ],
+    "last30_ego_counts": {
+      "interact": 30
+    },
+    "last30_partner_counts": {
+      "(0, 0)": 30
+    },
+    "partner_counts": {
+      "(-1, 0)": 9,
+      "(0, -1)": 6,
+      "(0, 0)": 360,
+      "(0, 1)": 5,
+      "(1, 0)": 5,
+      "interact": 15
+    },
+    "progress_counts": {
+      "0": 332,
+      "1": 9,
+      "2": 16,
+      "3": 16,
+      "5": 19,
+      "6": 3,
+      "7": 5
+    },
+    "progress_transitions": [
+      [
+        0,
+        0
+      ],
+      [
+        2,
+        1
+      ],
+      [
+        11,
+        2
+      ],
+      [
+        27,
+        3
+      ],
+      [
+        43,
+        5
+      ],
+      [
+        62,
+        6
+      ],
+      [
+        65,
+        7
+      ],
+      [
+        70,
+        0
+      ]
+    ],
+    "return": 34.6385,
+    "seed": 1,
+    "sparse": 20.0,
+    "sparse_steps": [
+      [
+        70,
+        20.0,
+        "interact",
+        "(1, 0)"
+      ]
+    ],
+    "step": 400
+  },
+  {
+    "builtin": 35.0,
+    "custom": -41.27950000000009,
+    "deliveries": 0.0,
+    "ego_counts": {
+      "(-1, 0)": 41,
+      "(0, -1)": 35,
+      "(0, 1)": 31,
+      "(1, 0)": 274,
+      "interact": 19
+    },
+    "final_held": [
+      "onion",
+      null
+    ],
+    "final_objects": {
+      "(0, 1)": [
+        "soup",
+        [
+          "onion",
+          3,
+          20
+        ]
+      ],
+      "(3, 0)": [
+        "soup",
+        [
+          "onion",
+          3,
+          20
+        ]
+      ],
+      "(4, 0)": [
+        "soup",
+        [
+          "onion",
+          3,
+          20
+        ]
+      ]
+    },
+    "final_orientations": [
+      [
+        1,
+        0
+      ],
+      [
+        0,
+        -1
+      ]
+    ],
+    "final_positions": [
+      [
+        6,
+        3
+      ],
+      [
+        3,
+        1
+      ]
+    ],
+    "final_pot_states": "{'empty': [], 'onion': defaultdict(<class 'list'>, {'ready': [(3, 0), (4, 0)]}), 'tomato': defaultdict(<class 'list'>, {})}",
+    "last10": [
+      {
+        "ego_action": "(1, 0)",
+        "held": [
+          "onion",
+          null
+        ],
+        "orientations": [
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            -1
+          ]
+        ],
+        "partner_action": "(0, 0)",
+        "positions": [
+          [
+            6,
+            3
+          ],
+          [
+            3,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 391
+      },
+      {
+        "ego_action": "(1, 0)",
+        "held": [
+          "onion",
+          null
+        ],
+        "orientations": [
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            -1
+          ]
+        ],
+        "partner_action": "(0, 0)",
+        "positions": [
+          [
+            6,
+            3
+          ],
+          [
+            3,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 392
+      },
+      {
+        "ego_action": "(1, 0)",
+        "held": [
+          "onion",
+          null
+        ],
+        "orientations": [
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            -1
+          ]
+        ],
+        "partner_action": "(0, 0)",
+        "positions": [
+          [
+            6,
+            3
+          ],
+          [
+            3,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 393
+      },
+      {
+        "ego_action": "(1, 0)",
+        "held": [
+          "onion",
+          null
+        ],
+        "orientations": [
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            -1
+          ]
+        ],
+        "partner_action": "(0, 0)",
+        "positions": [
+          [
+            6,
+            3
+          ],
+          [
+            3,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 394
+      },
+      {
+        "ego_action": "(1, 0)",
+        "held": [
+          "onion",
+          null
+        ],
+        "orientations": [
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            -1
+          ]
+        ],
+        "partner_action": "(0, 0)",
+        "positions": [
+          [
+            6,
+            3
+          ],
+          [
+            3,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 395
+      },
+      {
+        "ego_action": "(1, 0)",
+        "held": [
+          "onion",
+          null
+        ],
+        "orientations": [
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            -1
+          ]
+        ],
+        "partner_action": "(0, 0)",
+        "positions": [
+          [
+            6,
+            3
+          ],
+          [
+            3,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 396
+      },
+      {
+        "ego_action": "(1, 0)",
+        "held": [
+          "onion",
+          null
+        ],
+        "orientations": [
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            -1
+          ]
+        ],
+        "partner_action": "(0, 0)",
+        "positions": [
+          [
+            6,
+            3
+          ],
+          [
+            3,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 397
+      },
+      {
+        "ego_action": "(1, 0)",
+        "held": [
+          "onion",
+          null
+        ],
+        "orientations": [
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            -1
+          ]
+        ],
+        "partner_action": "(0, 0)",
+        "positions": [
+          [
+            6,
+            3
+          ],
+          [
+            3,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 398
+      },
+      {
+        "ego_action": "(1, 0)",
+        "held": [
+          "onion",
+          null
+        ],
+        "orientations": [
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            -1
+          ]
+        ],
+        "partner_action": "(0, 0)",
+        "positions": [
+          [
+            6,
+            3
+          ],
+          [
+            3,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 399
+      },
+      {
+        "ego_action": "(1, 0)",
+        "held": [
+          "onion",
+          null
+        ],
+        "orientations": [
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            -1
+          ]
+        ],
+        "partner_action": "(0, 0)",
+        "positions": [
+          [
+            6,
+            3
+          ],
+          [
+            3,
+            1
+          ]
+        ],
+        "sparse_reward": 0.0,
+        "step": 400
+      }
+    ],
+    "last30_ego_counts": {
+      "(1, 0)": 30
+    },
+    "last30_partner_counts": {
+      "(0, 0)": 30
+    },
+    "partner_counts": {
+      "(-1, 0)": 30,
+      "(0, -1)": 28,
+      "(0, 0)": 253,
+      "(0, 1)": 23,
+      "(1, 0)": 17,
+      "interact": 49
+    },
+    "progress_counts": {
+      "0": 2,
+      "1": 10,
+      "2": 18,
+      "3": 18,
+      "5": 19,
+      "6": 51,
+      "7": 282
+    },
+    "progress_transitions": [
+      [
+        0,
+        0
+      ],
+      [
+        2,
+        1
+      ],
+      [
+        12,
+        2
+      ],
+      [
+        30,
+        3
+      ],
+      [
+        48,
+        5
+      ],
+      [
+        67,
+        6
+      ],
+      [
+        118,
+        7
+      ]
+    ],
+    "return": -6.279500000000077,
+    "seed": 2,
+    "sparse": 0.0,
+    "sparse_steps": [],
+    "step": 400
+  }
+]

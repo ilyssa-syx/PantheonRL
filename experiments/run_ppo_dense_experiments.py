@@ -46,6 +46,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output-dir", type=Path, default=Path("results/selfplay")
     )
+    parser.add_argument(
+        "--run-name-suffix",
+        default="",
+        help="Optional suffix appended to each generated run directory name.",
+    )
     parser.add_argument("--timesteps", type=int, default=500_000)
     parser.add_argument("--evaluation-episodes", type=int, default=1)
     parser.add_argument("--partner-seed-offset", type=int, default=1000)
@@ -56,11 +61,31 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--gamma", type=float, default=None)
     parser.add_argument("--n-steps", type=int, default=None)
     parser.add_argument(
+        "--custom-shaping-scale",
+        type=float,
+        default=CUSTOM_SHAPING_SCALE,
+        help="Scale for custom dense reward shaping.",
+    )
+    parser.add_argument(
+        "--custom-shaping-extra-scale-v2",
+        "--custom-shaping-scale-v2",
+        dest="custom_shaping_extra_scale_v2",
+        type=float,
+        default=None,
+        help="Scale for version-2-only extra shaping after v2 is active.",
+    )
+    parser.add_argument(
         "--custom-shaping-version",
         type=int,
         default=1,
         choices=[1, 2],
         help="Custom dense reward version passed to train_ppo_a2c.py.",
+    )
+    parser.add_argument(
+        "--custom-shaping-version-switch-step",
+        type=int,
+        default=None,
+        help="Switch custom shaping to version 2 after this many environment steps.",
     )
     parser.add_argument(
         "--no-custom-dense-reward",
@@ -177,14 +202,19 @@ def run_matrix(args: argparse.Namespace) -> int:
             partner_seed_offset=args.partner_seed_offset,
             timesteps=timesteps,
             output_dir=args.output_dir,
+            run_name_suffix=args.run_name_suffix,
             ent_coef=args.ent_coef,
             learning_rate=args.learning_rate,
             gamma=args.gamma,
             n_steps=args.n_steps,
             custom_dense_reward=use_custom_dense,
             custom_shaping_gamma=CUSTOM_SHAPING_GAMMA,
-            custom_shaping_scale=CUSTOM_SHAPING_SCALE,
+            custom_shaping_scale=args.custom_shaping_scale,
+            custom_shaping_extra_scale_v2=args.custom_shaping_extra_scale_v2,
             custom_shaping_version=args.custom_shaping_version,
+            custom_shaping_version_switch_step=(
+                args.custom_shaping_version_switch_step
+            ),
         )
         run_dir = get_run_dir(run_args)
         result: Dict[str, Any] = {
@@ -193,8 +223,12 @@ def run_matrix(args: argparse.Namespace) -> int:
             "timesteps": timesteps,
             "custom_dense_reward": use_custom_dense,
             "custom_shaping_gamma": CUSTOM_SHAPING_GAMMA,
-            "custom_shaping_scale": CUSTOM_SHAPING_SCALE,
+            "custom_shaping_scale": args.custom_shaping_scale,
+            "custom_shaping_extra_scale_v2": args.custom_shaping_extra_scale_v2,
             "custom_shaping_version": args.custom_shaping_version,
+            "custom_shaping_version_switch_step": (
+                args.custom_shaping_version_switch_step
+            ),
             "run_name": make_run_name(run_args),
             "run_dir": str(run_dir),
             "training": "pending",
@@ -217,6 +251,7 @@ def run_matrix(args: argparse.Namespace) -> int:
                     "--partner-seed-offset", str(args.partner_seed_offset),
                     "--timesteps", str(timesteps),
                     "--output-dir", str(args.output_dir),
+                    "--run-name-suffix", args.run_name_suffix,
                     "--device", args.device,
                     "--verbose", str(args.verbose),
                 ]
@@ -227,11 +262,25 @@ def run_matrix(args: argparse.Namespace) -> int:
                             "--custom-shaping-gamma",
                             str(CUSTOM_SHAPING_GAMMA),
                             "--custom-shaping-scale",
-                            str(CUSTOM_SHAPING_SCALE),
+                            str(args.custom_shaping_scale),
                             "--custom-shaping-version",
                             str(args.custom_shaping_version),
                         ]
                     )
+                    if args.custom_shaping_extra_scale_v2 is not None:
+                        train_command.extend(
+                            [
+                                "--custom-shaping-extra-scale-v2",
+                                str(args.custom_shaping_extra_scale_v2),
+                            ]
+                        )
+                    if args.custom_shaping_version_switch_step is not None:
+                        train_command.extend(
+                            [
+                                "--custom-shaping-version-switch-step",
+                                str(args.custom_shaping_version_switch_step),
+                            ]
+                        )
                 for name in ("ent_coef", "learning_rate", "gamma", "n_steps"):
                     add_optional_arg(train_command, name, getattr(args, name))
                 run_command(train_command, args.dry_run)
@@ -280,6 +329,8 @@ def main() -> None:
     args = parse_args()
     if args.timesteps <= 0:
         raise ValueError("--timesteps must be positive")
+    if "/" in args.run_name_suffix or "\\" in args.run_name_suffix:
+        raise ValueError("--run-name-suffix must not contain path separators")
     if args.evaluation_episodes <= 0:
         raise ValueError("--evaluation-episodes must be positive")
     raise SystemExit(run_matrix(args))

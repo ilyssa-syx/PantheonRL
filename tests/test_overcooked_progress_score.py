@@ -8,16 +8,21 @@ from overcooked_ai_py.mdp.overcooked_mdp import ObjectState
 from overcookedgym.overcooked import (
     COUNTER_STAGING_BONUS,
     COUNTER_STAGING_CAP,
-    COUNTER_SOUP_DISTANCE_COEF,
     DISH_TO_READY_POT_DISTANCE_COEF,
+    HELD_SOUP_STALE_CAP,
     HELD_SOUP_DISTANCE_COEF,
+    READY_SOUP_STALE_COEF,
     OvercookedMultiEnv,
 )
 
 
 class OvercookedProgressScoreTest(unittest.TestCase):
     def make_env(
-        self, custom_dense_reward=False, custom_shaping_version=1, layout="simple"
+        self,
+        custom_dense_reward=False,
+        custom_shaping_version=1,
+        layout="simple",
+        **kwargs
     ):
         return OvercookedMultiEnv(
             layout,
@@ -25,6 +30,7 @@ class OvercookedProgressScoreTest(unittest.TestCase):
             custom_shaping_gamma=0.99,
             custom_shaping_scale=1.2,
             custom_shaping_version=custom_shaping_version,
+            **kwargs
         )
 
     def state_with(self, env, held=None, counter=None, pot=None, counter_pos=None):
@@ -75,11 +81,17 @@ class OvercookedProgressScoreTest(unittest.TestCase):
     def test_throughput_potential_rewards_late_stage_progress(self):
         env = self.make_env(custom_dense_reward=True)
         cooking_time = env.mdp.soup_cooking_time
-        pot_pos = env.mdp.get_pot_locations()[0]
         held_soup_state = self.state_with(env, held="soup")
         held_soup_distance = env._nearest_distance(
             held_soup_state.players[0].position,
             env.mdp.get_serving_locations(),
+        )
+        held_dish_state = self.state_with(
+            env, held="dish", pot=(3, cooking_time)
+        )
+        dish_to_ready_pot_distance = env._nearest_distance(
+            held_dish_state.players[0].position,
+            env._ready_soup_positions(held_dish_state),
         )
 
         self.assertAlmostEqual(env._potential(self.state_with(env, pot=(1, 0))), 0.3)
@@ -90,22 +102,13 @@ class OvercookedProgressScoreTest(unittest.TestCase):
             1.2,
         )
         self.assertAlmostEqual(
-            env._potential(
-                self.state_with(env, held="dish", pot=(3, cooking_time))
-            ),
-            1.5,
+            env._potential(held_dish_state),
+            1.5
+            - DISH_TO_READY_POT_DISTANCE_COEF * dish_to_ready_pot_distance,
         )
         self.assertAlmostEqual(
             env._potential(held_soup_state),
             2.0 - 0.05 * held_soup_distance,
-        )
-
-        env.ready_soup_ages = {pot_pos: 10}
-        self.assertAlmostEqual(
-            env._potential(
-                self.state_with(env, held="dish", pot=(3, cooking_time))
-            ),
-            1.5 - 0.25,
         )
 
     def test_custom_shaping_uses_potential_based_reward(self):
@@ -136,32 +139,86 @@ class OvercookedProgressScoreTest(unittest.TestCase):
             0.0,
         )
 
-    def test_v2_uses_grid_distance_for_held_soup(self):
+    def test_stale_penalty_is_v2_extra_only(self):
+        env = self.make_env(custom_dense_reward=True, custom_shaping_version=2)
+        cooking_time = env.mdp.soup_cooking_time
+        pot_pos = env.mdp.get_pot_locations()[0]
+        ready_state = self.state_with(env, held="dish", pot=(3, cooking_time))
+        dish_to_ready_pot_distance = env._nearest_distance(
+            ready_state.players[0].position,
+            env._ready_soup_positions(ready_state),
+        )
+
+        env.ready_soup_ages = {pot_pos: 10}
+
+        self.assertAlmostEqual(
+            env._potential(ready_state),
+            1.5
+            - DISH_TO_READY_POT_DISTANCE_COEF * dish_to_ready_pot_distance,
+        )
+        self.assertAlmostEqual(
+            env._potential_v2_extra(ready_state),
+            -5 * READY_SOUP_STALE_COEF,
+        )
+
+        held_state = self.state_with(env, held="soup")
+        env.held_soup_ages = {0: 100}
+        self.assertAlmostEqual(
+            env._potential_v2_extra(held_state),
+            -HELD_SOUP_STALE_CAP,
+        )
+
+    def test_custom_shaping_can_switch_to_v2_extra_scale(self):
+        env = self.make_env(
+            custom_dense_reward=True,
+            custom_shaping_version=1,
+            custom_shaping_extra_scale_v2=3.0,
+            custom_shaping_version_switch_step=10,
+            layout="random0",
+        )
+        if not env.non_edge_counters:
+            self.skipTest("random0 layout has no non-edge counters")
+        counter_pos = next(iter(env.non_edge_counters))
+        prev_state = self.state_with(env)
+        next_state = self.state_with(env, counter="soup", counter_pos=counter_pos)
+        prev_base_phi = env._potential(prev_state)
+        next_base_phi = env._potential(next_state)
+        prev_extra_phi = env._potential_v2_extra(prev_state)
+        next_extra_phi = env._potential_v2_extra(next_state)
+
+        self.assertEqual(env._active_custom_shaping_version(), 1)
+        self.assertAlmostEqual(
+            env._calculate_custom_shaping(prev_state, next_state, False),
+            1.2 * (0.99 * next_base_phi - prev_base_phi),
+        )
+        env.custom_shaping_elapsed_steps = 10
+        self.assertEqual(env._active_custom_shaping_version(), 2)
+        self.assertAlmostEqual(
+            env._calculate_custom_shaping(prev_state, next_state, False),
+            1.2 * (0.99 * next_base_phi - prev_base_phi)
+            + 3.0 * (0.99 * next_extra_phi - prev_extra_phi),
+        )
+
+    def test_v2_uses_manhattan_distance_for_held_soup(self):
         env = self.make_env(custom_dense_reward=True, custom_shaping_version=2)
         state = self.state_with(env, held="soup")
-        serving_targets = env._interaction_targets(env.mdp.get_serving_locations())
-        grid_distance = env._nearest_grid_distance(
-            state.players[0].position, serving_targets
+        distance = env._nearest_distance(
+            state.players[0].position, env.mdp.get_serving_locations()
         )
 
         self.assertAlmostEqual(
             env._potential_v2(state),
-            2.0 - HELD_SOUP_DISTANCE_COEF * grid_distance,
+            2.0 - HELD_SOUP_DISTANCE_COEF * distance,
         )
 
-    def test_v2_rewards_dish_moving_to_ready_pot_by_grid_distance(self):
+    def test_v2_does_not_add_extra_dish_to_ready_pot_distance_shaping(self):
         env = self.make_env(custom_dense_reward=True, custom_shaping_version=2)
         cooking_time = env.mdp.soup_cooking_time
         state = self.state_with(env, held="dish", pot=(3, cooking_time))
-        ready_pot_targets = env._interaction_targets(env._ready_soup_positions(state))
-        grid_distance = env._nearest_grid_distance(
-            state.players[0].position, ready_pot_targets
-        )
 
         self.assertAlmostEqual(
             env._potential_v2(state),
-            env._potential(state)
-            - DISH_TO_READY_POT_DISTANCE_COEF * grid_distance,
+            env._potential(state),
         )
 
     def test_interaction_signature_ignores_natural_cook_time_changes(self):
@@ -227,17 +284,10 @@ class OvercookedProgressScoreTest(unittest.TestCase):
             self.skipTest("random0 layout has no non-edge counters")
         counter_pos = next(iter(env.non_edge_counters))
         state = self.state_with(env, counter="soup", counter_pos=counter_pos)
-        serving_targets = env._interaction_targets(env.mdp.get_serving_locations())
 
         self.assertAlmostEqual(
             env._potential_v2(state) - env._potential(state),
-            (
-                COUNTER_SOUP_DISTANCE_COEF
-                * env._nearest_distance(counter_pos, env.mdp.get_serving_locations())
-                - COUNTER_SOUP_DISTANCE_COEF
-                * env._nearest_grid_distance(counter_pos, serving_targets)
-                + min(COUNTER_STAGING_BONUS, COUNTER_STAGING_CAP)
-            ),
+            min(COUNTER_STAGING_BONUS, COUNTER_STAGING_CAP),
         )
 
 
