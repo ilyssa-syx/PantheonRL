@@ -1,9 +1,0 @@
-{
-  "actual_ego_timesteps": null,
-  "actual_partner_timesteps": null,
-  "algo": "ppo",
-  "layout": "simple",
-  "requested_timesteps": 500000,
-  "seed": 1,
-  "status": "running"
-}
