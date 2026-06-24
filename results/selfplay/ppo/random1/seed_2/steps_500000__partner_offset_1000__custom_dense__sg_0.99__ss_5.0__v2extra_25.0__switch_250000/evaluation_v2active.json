@@ -1,0 +1,49 @@
+{
+  "algo": "ppo",
+  "deterministic": true,
+  "device": "cpu",
+  "ego_seed": 2,
+  "episode_built_in_shaped_returns": [
+    0.0
+  ],
+  "episode_custom_shaped_returns": [
+    0.0
+  ],
+  "episode_deliveries": [
+    0.0
+  ],
+  "episode_returns": [
+    0.0
+  ],
+  "episode_shaped_returns": [
+    0.0
+  ],
+  "episode_sparse_returns": [
+    0.0
+  ],
+  "episodes": 1,
+  "evaluation_note": "custom_shaping_elapsed_steps forced to custom_shaping_version_switch_step after each reset so v2 is active during eval",
+  "forced_custom_shaping_elapsed_steps": 250000,
+  "layout": "random1",
+  "max_return": 0.0,
+  "mean_built_in_shaped_return": 0.0,
+  "mean_custom_shaped_return": 0.0,
+  "mean_deliveries": 0.0,
+  "mean_return": 0.0,
+  "mean_shaped_return": 0.0,
+  "mean_sparse_return": 0.0,
+  "median_return": 0.0,
+  "min_return": 0.0,
+  "partner_seed": 1002,
+  "run_dir": "results/selfplay/ppo/random1/seed_2/steps_500000__partner_offset_1000__custom_dense__sg_0.99__ss_5.0__v2extra_25.0__switch_250000",
+  "seed": 2,
+  "std_return": 0.0,
+  "training_env_kwargs": {
+    "custom_dense_reward": true,
+    "custom_shaping_extra_scale_v2": 25.0,
+    "custom_shaping_gamma": 0.99,
+    "custom_shaping_scale": 5.0,
+    "custom_shaping_version": 1,
+    "custom_shaping_version_switch_step": 250000
+  }
+}

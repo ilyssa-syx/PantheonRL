@@ -1,0 +1,190 @@
+[
+  {
+    "seed": 1,
+    "steps": 400,
+    "total_return": 201.60300000000007,
+    "sparse_return": 120.0,
+    "deliveries": 6.0,
+    "built_in_shaped_return": 96.0,
+    "custom_shaped_return": -14.396999999999936,
+    "custom_base_total": -14.396999999999936,
+    "custom_v2_extra_total": 0.0,
+    "custom_useless_interact_total": 0.0,
+    "late_stage_steps": 0,
+    "no_interaction_change_steps": 0,
+    "action_counts_last_80": {
+      "(-1, 0) + interact": 80
+    },
+    "ego_action_counts_last_80": {
+      "(-1, 0)": 80
+    },
+    "partner_action_counts_last_80": {
+      "interact": 80
+    },
+    "final_state": {
+      "players": [
+        {
+          "idx": 0,
+          "pos": [
+            3,
+            2
+          ],
+          "ori": [
+            -1,
+            0
+          ],
+          "held": null
+        },
+        {
+          "idx": 1,
+          "pos": [
+            1,
+            1
+          ],
+          "ori": [
+            1,
+            0
+          ],
+          "held": {
+            "name": "dish",
+            "state": "None"
+          }
+        }
+      ],
+      "objects": [
+        {
+          "pos": [
+            1,
+            0
+          ],
+          "obj": {
+            "name": "dish",
+            "state": "None"
+          }
+        },
+        {
+          "pos": [
+            2,
+            1
+          ],
+          "obj": {
+            "name": "dish",
+            "state": "None"
+          }
+        },
+        {
+          "pos": [
+            2,
+            2
+          ],
+          "obj": {
+            "name": "dish",
+            "state": "None"
+          }
+        },
+        {
+          "pos": [
+            4,
+            1
+          ],
+          "obj": {
+            "name": "soup",
+            "state": [
+              "onion",
+              2,
+              0
+            ]
+          }
+        }
+      ],
+      "ready_soup_positions": [],
+      "held_soup_player_indices": [],
+      "ready_soup_ages": {},
+      "held_soup_ages": {}
+    }
+  },
+  {
+    "seed": 2,
+    "steps": 400,
+    "total_return": 106.59599999999968,
+    "sparse_return": 60.0,
+    "deliveries": 3.0,
+    "built_in_shaped_return": 60.0,
+    "custom_shaped_return": -13.403999999999922,
+    "custom_base_total": -13.403999999999922,
+    "custom_v2_extra_total": 0.0,
+    "custom_useless_interact_total": 0.0,
+    "late_stage_steps": 0,
+    "no_interaction_change_steps": 0,
+    "action_counts_last_80": {
+      "interact + interact": 80
+    },
+    "ego_action_counts_last_80": {
+      "interact": 80
+    },
+    "partner_action_counts_last_80": {
+      "interact": 80
+    },
+    "final_state": {
+      "players": [
+        {
+          "idx": 0,
+          "pos": [
+            3,
+            3
+          ],
+          "ori": [
+            0,
+            1
+          ],
+          "held": null
+        },
+        {
+          "idx": 1,
+          "pos": [
+            1,
+            1
+          ],
+          "ori": [
+            1,
+            0
+          ],
+          "held": {
+            "name": "onion",
+            "state": "None"
+          }
+        }
+      ],
+      "objects": [
+        {
+          "pos": [
+            2,
+            1
+          ],
+          "obj": {
+            "name": "dish",
+            "state": "None"
+          }
+        },
+        {
+          "pos": [
+            4,
+            1
+          ],
+          "obj": {
+            "name": "soup",
+            "state": [
+              "onion",
+              2,
+              0
+            ]
+          }
+        }
+      ],
+      "ready_soup_positions": [],
+      "held_soup_player_indices": [],
+      "ready_soup_ages": {},
+      "held_soup_ages": {}
+    }
+  }
+]

@@ -1,0 +1,96 @@
+{
+    "algo_args":	{
+        "algo":	{
+            "action_aggregation":	"prod",
+            "actor_num_mini_batch":	32,
+            "clip_param":	0.2,
+            "critic_epoch":	10,
+            "critic_num_mini_batch":	32,
+            "entropy_coef":	0.0,
+            "fixed_order":	false,
+            "gae_lambda":	0.95,
+            "gamma":	0.99,
+            "huber_delta":	10.0,
+            "max_grad_norm":	0.5,
+            "ppo_epoch":	10,
+            "share_param":	false,
+            "use_clipped_value_loss":	false,
+            "use_gae":	true,
+            "use_huber_loss":	false,
+            "use_max_grad_norm":	true,
+            "use_policy_active_masks":	true,
+            "value_loss_coef":	0.5
+        },
+        "device":	{
+            "cuda":	true,
+            "cuda_deterministic":	true,
+            "torch_threads":	4
+        },
+        "eval":	{
+            "eval_episodes":	1,
+            "n_eval_rollout_threads":	1,
+            "use_eval":	true
+        },
+        "logger":	{
+            "log_dir":	"/workspace/PantheonRL/results/selfplay/happo"
+        },
+        "model":	{
+            "activation_func":	"tanh",
+            "critic_lr":	0.0003,
+            "data_chunk_length":	10,
+            "gain":	0.01,
+            "hidden_sizes":	[
+                64,
+                64
+            ],
+            "initialization_method":	"orthogonal_",
+            "lr":	0.0003,
+            "opti_eps":	1e-05,
+            "recurrent_n":	1,
+            "std_x_coef":	1,
+            "std_y_coef":	0.5,
+            "use_feature_normalization":	true,
+            "use_hidden_layernorm":	true,
+            "use_naive_recurrent_policy":	false,
+            "use_recurrent_policy":	false,
+            "weight_decay":	0
+        },
+        "render":	{
+            "render_episodes":	10,
+            "use_render":	false
+        },
+        "seed":	{
+            "agent_seed_offset":	1000,
+            "seed":	1,
+            "seed_specify":	true
+        },
+        "train":	{
+            "episode_length":	2048,
+            "eval_interval":	245,
+            "log_interval":	245,
+            "model_dir":	null,
+            "n_rollout_threads":	1,
+            "num_env_steps":	501760,
+            "use_linear_lr_decay":	false,
+            "use_proper_time_limits":	true,
+            "use_valuenorm":	false
+        }
+    },
+    "env_args":	{
+        "custom_dense_reward":	false,
+        "custom_shaping_extra_scale_v2":	null,
+        "custom_shaping_gamma":	0.99,
+        "custom_shaping_scale":	1.2,
+        "custom_shaping_version":	1,
+        "custom_shaping_version_switch_step":	null,
+        "horizon":	400,
+        "layout_name":	"random0",
+        "state_type":	"EP"
+    },
+    "main_args":	{
+        "algo":	"happo",
+        "env":	"overcooked",
+        "exp_name":	"steps_500000__partner_offset_1000",
+        "load_config":	""
+    }
+}
